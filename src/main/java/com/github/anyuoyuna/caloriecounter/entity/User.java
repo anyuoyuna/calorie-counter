@@ -18,4 +18,8 @@ public class User {
 
     private String timezone = "Asia/Bangkok";
     private Integer dailyCalorieGoal = 2000;
+    private Double dailyProteinGoal;
+    private Double dailyFatGoal;
+    private Double dailyCarbsGoal;
+    private Double dailyFiberGoal;
 }
