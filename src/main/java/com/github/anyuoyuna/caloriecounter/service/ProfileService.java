@@ -45,7 +45,7 @@ public class ProfileService {
             sb.append("Текущий вес: ").append(latest.getWeightKg()).append(" кг")
                     .append(" (на ").append(latest.getLoggedAt().format(DATE_FMT)).append(")\n");
             sb.append("Процент жира: ").append(formatOrUnknown(latest.getBodyFatPercent())).append("\n");
-            sb.append("Вес мышц: ").append(formatOrUnknown(latest.getMuscleWeight())).append("\n");
+            sb.append("Вес мышц: ").append(formatWeightOrUnknown(latest.getMuscleWeight())).append("\n");
 
             if (firstOpt.isPresent() && !firstOpt.get().getId().equals(latest.getId())) {
                 double diff = latest.getWeightKg() - firstOpt.get().getWeightKg();
@@ -68,6 +68,10 @@ public class ProfileService {
 
     private String formatOrUnknown(Double value) {
         return value != null ? value + "%" : "не указано";
+    }
+
+    private String formatWeightOrUnknown(Double value) {
+        return value != null ? value + " кг" : "не указано";
     }
 
     private String genderLabel(com.github.anyuoyuna.caloriecounter.entity.enums.Gender g) {
