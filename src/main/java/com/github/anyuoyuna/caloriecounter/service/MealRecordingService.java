@@ -26,24 +26,32 @@ public class MealRecordingService {
     private final FoodItemRepository foodItemRepo;
     private final MealEntryRepository mealEntryRepo;
     private final EmbeddingClient embeddingClient;
+    private final MealInputValidator mealInputValidator;
 
-    public MealRecordingService(FoodItemRepository foodItemRepo, MealEntryRepository mealEntryRepo, EmbeddingClient embeddingClient) {
+    public MealRecordingService(FoodItemRepository foodItemRepo,
+                                MealEntryRepository mealEntryRepo,
+                                EmbeddingClient embeddingClient,
+                                MealInputValidator mealInputValidator) {
         this.foodItemRepo = foodItemRepo;
         this.mealEntryRepo = mealEntryRepo;
         this.embeddingClient = embeddingClient;
+        this.mealInputValidator = mealInputValidator;
     }
 
-    public record RecordingResult(List<MealEntry> savedEntries, List<String> unrecognizedNames) {}
+    public record RecordingResult(List<MealEntry> savedEntries,
+                                  List<String> unrecognizedNames,
+                                  List<String> rejectedNames) {}
 
     @Transactional
     public RecordingResult recordMeal(User user, ParsedMealResponse parsed) {
         LocalDate date = parseDateOrToday(parsed.getDate());
         LocalDateTime eatenAt = LocalDateTime.of(date, LocalTime.now());
+        MealInputValidator.ValidationResult validationResult = mealInputValidator.validate(parsed);
 
         List<MealEntry> savedEntries = new ArrayList<>();
         List<String> unrecognizedNames = new ArrayList<>();
 
-        for (ParsedFoodItem item : parsed.getItems()) {
+        for (ParsedFoodItem item : validationResult.acceptedItems()) {
             if (!item.isRecognized()) {
                 log.warn("Продукт не распознан моделью: {}", item.getName());
                 unrecognizedNames.add(item.getName());
@@ -69,7 +77,7 @@ public class MealRecordingService {
         log.info("Записано {} позиций еды для пользователя {}, дата={}, приём={}, не распознано={}",
                 savedEntries.size(), user.getTelegramId(), date, parsed.getMeal(), unrecognizedNames.size());
 
-        return new RecordingResult(savedEntries, unrecognizedNames);
+        return new RecordingResult(savedEntries, unrecognizedNames, validationResult.rejectedItemNames());
     }
 
     private FoodItem findOrCreateFoodItem(ParsedFoodItem item) {

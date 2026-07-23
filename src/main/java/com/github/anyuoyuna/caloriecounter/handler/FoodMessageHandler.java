@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,7 +49,9 @@ public class FoodMessageHandler {
         List<MealEntry> saved = result.savedEntries();
 
         if (saved.isEmpty()) {
-            String unrecognized = String.join(", ", result.unrecognizedNames());
+            List<String> skippedItems = new ArrayList<>(result.unrecognizedNames());
+            skippedItems.addAll(result.rejectedNames());
+            String unrecognized = String.join(", ", skippedItems);
             return BotResponse.plain("Не смогла определить: " + unrecognized + "\nПопробуй описать подробнее или по-другому.");
         }
 
@@ -60,6 +63,9 @@ public class FoodMessageHandler {
 
         if (!result.unrecognizedNames().isEmpty()) {
             report += "\n\n⚠ Не смогла определить: " + String.join(", ", result.unrecognizedNames());
+        }
+        if (!result.rejectedNames().isEmpty()) {
+            report += "\n\n⚠ Не записала некорректные данные: " + String.join(", ", result.rejectedNames());
         }
 
         return BotResponse.html(report);

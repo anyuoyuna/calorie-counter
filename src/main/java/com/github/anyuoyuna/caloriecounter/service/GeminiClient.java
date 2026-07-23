@@ -12,7 +12,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class GeminiClient {
+public class GeminiClient implements AiClient {
 
     private static final String BASE_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
@@ -28,6 +28,7 @@ public class GeminiClient {
         this.restClient = RestClient.create();
     }
 
+    @Override
     public String generateContent(String prompt) {
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(

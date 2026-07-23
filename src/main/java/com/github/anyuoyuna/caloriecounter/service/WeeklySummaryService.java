@@ -17,7 +17,7 @@ import java.util.Map;
 public class WeeklySummaryService {
 
     private final MealEntryRepository mealEntryRepo;
-    private final GeminiClient geminiClient;
+    private final AiClient aiClient;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM");
 
@@ -33,9 +33,9 @@ public class WeeklySummaryService {
             Не используй markdown-разметку, простой текст. Не придумывай факты сверх того, что дано в данных.
             """;
 
-    public WeeklySummaryService(MealEntryRepository mealEntryRepo, GeminiClient geminiClient) {
+    public WeeklySummaryService(MealEntryRepository mealEntryRepo, AiClient aiClient) {
         this.mealEntryRepo = mealEntryRepo;
-        this.geminiClient = geminiClient;
+        this.aiClient = aiClient;
     }
 
     public record DaySummary(LocalDate date, double calories, double protein, double fat, double carbs, double fiber) {}
@@ -64,7 +64,7 @@ public class WeeklySummaryService {
 
         String prompt = PROMPT_TEMPLATE.formatted(dataBlock.toString());
 
-        String narrative = geminiClient.generateContent(prompt);
+        String narrative = aiClient.generateContent(prompt);
         if (narrative == null) {
             log.warn("Не удалось получить недельное саммари от Gemini для пользователя {}", user.getTelegramId());
             return "Не получилось сформировать саммари недели, попробуй чуть позже.";

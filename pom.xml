@@ -54,7 +54,6 @@
             <artifactId>telegrambots-spring-boot-starter</artifactId>
             <version>6.9.7.1</version>
         </dependency>
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -64,6 +63,16 @@
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-vector</artifactId>
             <version>${hibernate.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-google-ai-gemini</artifactId>
+            <version>1.18.0</version>
         </dependency>
 	</dependencies>
 

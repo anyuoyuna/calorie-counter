@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class FoodParsingService {
 
-    private final GeminiClient geminiClient;
+    private final AiClient aiClient;
     private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -74,15 +74,15 @@ public class FoodParsingService {
                                        Текст от пользователя: "%s"
             """;
 
-    public FoodParsingService(GeminiClient geminiClient, ObjectMapper objectMapper) {
-        this.geminiClient = geminiClient;
+    public FoodParsingService(AiClient aiClient, ObjectMapper objectMapper) {
+        this.aiClient = aiClient;
         this.objectMapper = objectMapper;
     }
 
     public ParsedMealResponse parse(String userText) {
         String prompt = PROMPT_TEMPLATE.formatted(LocalDate.now().format(DATE_FMT), userText);
 
-        String rawResponse = geminiClient.generateContent(prompt);
+        String rawResponse = aiClient.generateContent(prompt);
         if (rawResponse == null) {
             log.warn("Gemini вернула пустой ответ на текст: {}", userText);
             return null;

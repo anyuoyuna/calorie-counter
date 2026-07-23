@@ -1,7 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.handler;
 
 import com.github.anyuoyuna.caloriecounter.bot.BotResponse;
-import com.github.anyuoyuna.caloriecounter.service.GeminiClient;
+import com.github.anyuoyuna.caloriecounter.service.AiClient;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,14 +14,14 @@ public class QuestionMessageHandler {
             Вопрос: "%s"
             """;
 
-    private final GeminiClient geminiClient;
+    private final AiClient aiClient;
 
-    public QuestionMessageHandler(GeminiClient geminiClient) {
-        this.geminiClient = geminiClient;
+    public QuestionMessageHandler(AiClient aiClient) {
+        this.aiClient = aiClient;
     }
 
     public BotResponse handle(String text) {
-        String answer = geminiClient.generateContent(PROMPT_TEMPLATE.formatted(text));
+        String answer = aiClient.generateContent(PROMPT_TEMPLATE.formatted(text));
         if (answer == null) {
             return BotResponse.plain("Не получилось получить ответ, попробуй ещё раз.");
         }

@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class ActivityParsingService {
 
-    private final GeminiClient geminiClient;
+    private final AiClient aiClient;
     private final ObjectMapper objectMapper;
     private final WeightLogRepository weightLogRepo;
 
@@ -48,9 +48,9 @@ public class ActivityParsingService {
             Текст от пользователя: "%s"
             """;
 
-    public ActivityParsingService(GeminiClient geminiClient, ObjectMapper objectMapper,
+    public ActivityParsingService(AiClient aiClient, ObjectMapper objectMapper,
                                   UserProfileRepository profileRepo, WeightLogRepository weightLogRepo) {
-        this.geminiClient = geminiClient;
+        this.aiClient = aiClient;
         this.objectMapper = objectMapper;
         this.weightLogRepo = weightLogRepo;
     }
@@ -62,7 +62,7 @@ public class ActivityParsingService {
 
         String prompt = PROMPT_TEMPLATE.formatted(LocalDate.now().format(DATE_FMT), weightKg, userText);
 
-        String rawResponse = geminiClient.generateContent(prompt);
+        String rawResponse = aiClient.generateContent(prompt);
         if (rawResponse == null) {
             log.warn("Gemini вернула пустой ответ на текст активности: {}", userText);
             return null;
