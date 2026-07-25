@@ -1,8 +1,14 @@
 package com.github.anyuoyuna.caloriecounter.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.anyuoyuna.caloriecounter.domain.food.FoodParsingService;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import org.junit.jupiter.api.Test;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,6 +16,7 @@ class FoodParsingServiceTest {
 
     @Test
     void parsesResponseFromAiClientWithoutCallingGemini() {
+        Clock fixedClock = Clock.fixed(Instant.parse("2026-07-22T10:00:00Z"), ZoneId.of("UTC"));
         AiClient fakeAiClient = prompt -> """
                 {
                   "date": "2026-07-22",
@@ -25,8 +32,7 @@ class FoodParsingServiceTest {
                   }]
                 }
                 """;
-        FoodParsingService service = new FoodParsingService(fakeAiClient, new ObjectMapper());
-
+        FoodParsingService service = new FoodParsingService(fakeAiClient, new ObjectMapper(), fixedClock);
         ParsedMealResponse result = service.parse("Greek yogurt for breakfast");
 
         assertThat(result.getMeal()).isEqualTo("breakfast");

@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.infrastructure.ai;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

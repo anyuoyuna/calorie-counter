@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.infrastructure.ai;
 
 /**
  * Port for requesting text generation from an AI model.

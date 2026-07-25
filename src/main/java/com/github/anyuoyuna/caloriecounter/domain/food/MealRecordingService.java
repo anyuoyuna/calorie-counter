@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.food;
 
 import com.github.anyuoyuna.caloriecounter.dto.ParsedFoodItem;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
@@ -8,10 +8,12 @@ import com.github.anyuoyuna.caloriecounter.entity.User;
 import com.github.anyuoyuna.caloriecounter.entity.enums.FoodSource;
 import com.github.anyuoyuna.caloriecounter.repository.FoodItemRepository;
 import com.github.anyuoyuna.caloriecounter.repository.MealEntryRepository;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.EmbeddingClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -27,15 +29,17 @@ public class MealRecordingService {
     private final MealEntryRepository mealEntryRepo;
     private final EmbeddingClient embeddingClient;
     private final MealInputValidator mealInputValidator;
+    private final Clock clock;
 
     public MealRecordingService(FoodItemRepository foodItemRepo,
                                 MealEntryRepository mealEntryRepo,
                                 EmbeddingClient embeddingClient,
-                                MealInputValidator mealInputValidator) {
+                                MealInputValidator mealInputValidator, Clock clock) {
         this.foodItemRepo = foodItemRepo;
         this.mealEntryRepo = mealEntryRepo;
         this.embeddingClient = embeddingClient;
         this.mealInputValidator = mealInputValidator;
+        this.clock = clock;
     }
 
     public record RecordingResult(List<MealEntry> savedEntries,
@@ -45,7 +49,7 @@ public class MealRecordingService {
     @Transactional
     public RecordingResult recordMeal(User user, ParsedMealResponse parsed) {
         LocalDate date = parseDateOrToday(parsed.getDate());
-        LocalDateTime eatenAt = LocalDateTime.of(date, LocalTime.now());
+        LocalDateTime eatenAt = LocalDateTime.of(date, LocalTime.now(clock));
         MealInputValidator.ValidationResult validationResult = mealInputValidator.validate(parsed);
 
         List<MealEntry> savedEntries = new ArrayList<>();
@@ -113,10 +117,10 @@ public class MealRecordingService {
 
     private LocalDate parseDateOrToday(String dateStr) {
         try {
-            return dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now();
+            return dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now(clock);
         } catch (Exception e) {
             log.warn("Не удалось распарсить дату '{}' от LLM, использую сегодня", dateStr);
-            return LocalDate.now();
+            return LocalDate.now(clock);
         }
     }
 

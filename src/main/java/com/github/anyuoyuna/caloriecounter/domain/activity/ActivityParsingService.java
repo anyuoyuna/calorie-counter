@@ -1,13 +1,14 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.activity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedActivity;
 import com.github.anyuoyuna.caloriecounter.entity.User;
-import com.github.anyuoyuna.caloriecounter.repository.UserProfileRepository;
 import com.github.anyuoyuna.caloriecounter.repository.WeightLogRepository;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -18,6 +19,7 @@ public class ActivityParsingService {
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
     private final WeightLogRepository weightLogRepo;
+    private final Clock clock;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
 
@@ -49,18 +51,20 @@ public class ActivityParsingService {
             """;
 
     public ActivityParsingService(AiClient aiClient, ObjectMapper objectMapper,
-                                  UserProfileRepository profileRepo, WeightLogRepository weightLogRepo) {
+                                  WeightLogRepository weightLogRepo, Clock clock) {
         this.aiClient = aiClient;
         this.objectMapper = objectMapper;
         this.weightLogRepo = weightLogRepo;
+        this.clock = clock;
     }
 
     public ParsedActivity parse(User user, String userText) {
+        String today = LocalDate.now(clock).format(DATE_FMT);
         double weightKg = weightLogRepo.findFirstByUserOrderByLoggedAtDesc(user)
                 .map(w -> w.getWeightKg())
                 .orElse(70.0);
 
-        String prompt = PROMPT_TEMPLATE.formatted(LocalDate.now().format(DATE_FMT), weightKg, userText);
+        String prompt = PROMPT_TEMPLATE.formatted(today, weightKg, userText);
 
         String rawResponse = aiClient.generateContent(prompt);
         if (rawResponse == null) {
@@ -68,24 +72,12 @@ public class ActivityParsingService {
             return null;
         }
 
-        String cleaned = stripMarkdownFences(rawResponse);
-
         try {
-            return objectMapper.readValue(cleaned, ParsedActivity.class);
+            return objectMapper.readValue(rawResponse, ParsedActivity.class);
         } catch (Exception e) {
             log.error("Не удалось распарсить JSON активности от Gemini. Сырой ответ: {}", rawResponse, e);
             return null;
         }
     }
 
-    private String stripMarkdownFences(String text) {
-        String trimmed = text.trim();
-        if (trimmed.startsWith("```")) {
-            trimmed = trimmed.replaceFirst("^```(json)?", "").trim();
-            if (trimmed.endsWith("```")) {
-                trimmed = trimmed.substring(0, trimmed.length() - 3).trim();
-            }
-        }
-        return trimmed;
-    }
 }

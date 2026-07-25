@@ -5,9 +5,9 @@ import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
 import com.github.anyuoyuna.caloriecounter.entity.MealEntry;
 import com.github.anyuoyuna.caloriecounter.entity.User;
 import com.github.anyuoyuna.caloriecounter.exception.GeminiUnavailableException;
-import com.github.anyuoyuna.caloriecounter.service.DailyReportService;
-import com.github.anyuoyuna.caloriecounter.service.FoodParsingService;
-import com.github.anyuoyuna.caloriecounter.service.MealRecordingService;
+import com.github.anyuoyuna.caloriecounter.domain.food.DailyReportService;
+import com.github.anyuoyuna.caloriecounter.domain.food.FoodParsingService;
+import com.github.anyuoyuna.caloriecounter.domain.food.MealRecordingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

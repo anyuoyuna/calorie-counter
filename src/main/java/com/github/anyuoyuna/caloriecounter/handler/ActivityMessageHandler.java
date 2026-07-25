@@ -4,8 +4,8 @@ import com.github.anyuoyuna.caloriecounter.bot.BotResponse;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedActivity;
 import com.github.anyuoyuna.caloriecounter.entity.ActivityLog;
 import com.github.anyuoyuna.caloriecounter.entity.User;
-import com.github.anyuoyuna.caloriecounter.service.ActivityParsingService;
-import com.github.anyuoyuna.caloriecounter.service.ActivityRecordingService;
+import com.github.anyuoyuna.caloriecounter.domain.activity.ActivityParsingService;
+import com.github.anyuoyuna.caloriecounter.domain.activity.ActivityRecordingService;
 import org.springframework.stereotype.Component;
 
 @Component

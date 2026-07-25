@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.activity;
 
 import com.github.anyuoyuna.caloriecounter.dto.ParsedActivity;
 import com.github.anyuoyuna.caloriecounter.entity.ActivityLog;
@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 @Slf4j
@@ -15,9 +16,11 @@ import java.time.LocalDate;
 public class ActivityRecordingService {
 
     private final ActivityLogRepository activityLogRepo;
+    private final Clock clock;
 
-    public ActivityRecordingService(ActivityLogRepository activityLogRepo) {
+    public ActivityRecordingService(ActivityLogRepository activityLogRepo, Clock clock) {
         this.activityLogRepo = activityLogRepo;
+        this.clock = clock;
     }
 
     @Transactional
@@ -42,9 +45,9 @@ public class ActivityRecordingService {
 
     private LocalDate parseDateOrToday(String dateStr) {
         try {
-            return dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now();
+            return dateStr != null ? LocalDate.parse(dateStr) : LocalDate.now(clock);
         } catch (Exception e) {
-            return LocalDate.now();
+            return LocalDate.now(clock);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,6 +10,8 @@ import lombok.Setter;
 public class ParsedFoodItem {
     private String name;
     private Double grams;
+
+    @JsonProperty("weight_source")
     private String weightSource; // "explicit" | "estimated" | "calculated"
     private Double calories;
     private Double protein;

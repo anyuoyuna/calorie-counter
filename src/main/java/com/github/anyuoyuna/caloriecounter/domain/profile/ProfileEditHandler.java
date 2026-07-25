@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.profile;
+package com.github.anyuoyuna.caloriecounter.domain.profile;
 
 import com.github.anyuoyuna.caloriecounter.entity.User;
 import com.github.anyuoyuna.caloriecounter.entity.UserProfile;
@@ -8,7 +8,6 @@ import com.github.anyuoyuna.caloriecounter.entity.enums.GoalType;
 import com.github.anyuoyuna.caloriecounter.repository.UserProfileRepository;
 import com.github.anyuoyuna.caloriecounter.repository.UserRepository;
 import com.github.anyuoyuna.caloriecounter.repository.WeightLogRepository;
-import com.github.anyuoyuna.caloriecounter.service.CalorieCalculationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

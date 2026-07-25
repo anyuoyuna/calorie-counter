@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.profile;
+package com.github.anyuoyuna.caloriecounter.domain.profile;
 
 public enum EditStep {
     NONE,

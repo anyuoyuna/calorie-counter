@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.infrastructure.ai;
 
 import com.github.anyuoyuna.caloriecounter.exception.GeminiUnavailableException;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +35,9 @@ public class GeminiClient implements AiClient {
                         Map.of("parts", List.of(
                                 Map.of("text", prompt)
                         ))
+                ),
+                "generationConfig", Map.of(
+                        "response_mime_type", "application/json"
                 )
         );
 

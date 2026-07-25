@@ -1,10 +1,12 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.food;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -14,6 +16,7 @@ public class FoodParsingService {
 
     private final AiClient aiClient;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
 
@@ -74,13 +77,15 @@ public class FoodParsingService {
                                        Текст от пользователя: "%s"
             """;
 
-    public FoodParsingService(AiClient aiClient, ObjectMapper objectMapper) {
+    public FoodParsingService(AiClient aiClient, ObjectMapper objectMapper, Clock clock) {
         this.aiClient = aiClient;
         this.objectMapper = objectMapper;
+        this.clock = clock;
     }
 
     public ParsedMealResponse parse(String userText) {
-        String prompt = PROMPT_TEMPLATE.formatted(LocalDate.now().format(DATE_FMT), userText);
+        String today = LocalDate.now(clock).format(DATE_FMT);
+        String prompt = PROMPT_TEMPLATE.formatted(today, userText);
 
         String rawResponse = aiClient.generateContent(prompt);
         if (rawResponse == null) {
@@ -88,10 +93,8 @@ public class FoodParsingService {
             return null;
         }
 
-        String cleaned = stripMarkdownFences(rawResponse);
-
         try {
-            return objectMapper.readValue(cleaned, ParsedMealResponse.class);
+            return objectMapper.readValue(rawResponse, ParsedMealResponse.class);
         } catch (Exception e) {
             log.error("Не удалось распарсить JSON от Gemini. Сырой ответ: {}", rawResponse, e);
             return null;

@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.profile;
 
 import com.github.anyuoyuna.caloriecounter.entity.UserProfile;
 import com.github.anyuoyuna.caloriecounter.entity.enums.ActivityLevel;

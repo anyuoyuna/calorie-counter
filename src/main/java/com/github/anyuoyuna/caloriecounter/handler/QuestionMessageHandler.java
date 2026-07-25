@@ -1,7 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.handler;
 
 import com.github.anyuoyuna.caloriecounter.bot.BotResponse;
-import com.github.anyuoyuna.caloriecounter.service.AiClient;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import org.springframework.stereotype.Component;
 
 @Component

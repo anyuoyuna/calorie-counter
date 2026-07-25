@@ -1,11 +1,13 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.food;
 
 import com.github.anyuoyuna.caloriecounter.entity.MealEntry;
 import com.github.anyuoyuna.caloriecounter.entity.User;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import com.github.anyuoyuna.caloriecounter.repository.MealEntryRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -18,6 +20,7 @@ public class WeeklySummaryService {
 
     private final MealEntryRepository mealEntryRepo;
     private final AiClient aiClient;
+    private final Clock clock;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM");
 
@@ -33,15 +36,16 @@ public class WeeklySummaryService {
             Не используй markdown-разметку, простой текст. Не придумывай факты сверх того, что дано в данных.
             """;
 
-    public WeeklySummaryService(MealEntryRepository mealEntryRepo, AiClient aiClient) {
+    public WeeklySummaryService(MealEntryRepository mealEntryRepo, AiClient aiClient, Clock clock) {
         this.mealEntryRepo = mealEntryRepo;
         this.aiClient = aiClient;
+        this.clock = clock;
     }
 
     public record DaySummary(LocalDate date, double calories, double protein, double fat, double carbs, double fiber) {}
 
     public String buildWeeklySummary(User user) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         LocalDate weekStart = today.minusDays(6);
 
         List<MealEntry> entries = mealEntryRepo.findByUserAndEatenAtBetween(

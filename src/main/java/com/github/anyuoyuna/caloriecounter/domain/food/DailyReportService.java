@@ -1,4 +1,4 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.food;
 
 import com.github.anyuoyuna.caloriecounter.entity.ActivityLog;
 import com.github.anyuoyuna.caloriecounter.entity.MealEntry;
@@ -7,6 +7,7 @@ import com.github.anyuoyuna.caloriecounter.repository.ActivityLogRepository;
 import com.github.anyuoyuna.caloriecounter.repository.MealEntryRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,10 +18,12 @@ public class DailyReportService {
 
     private final MealEntryRepository mealEntryRepo;
     private final ActivityLogRepository activityLogRepo;
+    private final Clock clock;
 
-    public DailyReportService(MealEntryRepository mealEntryRepo, ActivityLogRepository activityLogRepo) {
+    public DailyReportService(MealEntryRepository mealEntryRepo, ActivityLogRepository activityLogRepo, Clock clock) {
         this.mealEntryRepo = mealEntryRepo;
         this.activityLogRepo = activityLogRepo;
+        this.clock = clock;
     }
 
     public record Macros(double calories, double protein, double fat, double carbs, double fiber) {}
@@ -68,7 +71,7 @@ public class DailyReportService {
     public String buildMealReport(String itemNames, Macros meal, User user, LocalDate date) {
         Macros day = dayTotals(user, date);
         Macros remaining = remaining(user, date, day);
-        String dateLabel = date.equals(LocalDate.now()) ? "Сегодня" : "На " + date;
+        String dateLabel = date.equals(LocalDate.now(clock)) ? "Сегодня" : "На " + date;
 
         StringBuilder sb = new StringBuilder();
         sb.append("Записала: ").append(itemNames).append("\n\n");
@@ -85,7 +88,7 @@ public class DailyReportService {
     public String buildDailySummary(User user, LocalDate date) {
         Macros day = dayTotals(user, date);
         Macros remaining = remaining(user, date, day);
-        String dateLabel = date.equals(LocalDate.now()) ? "Сегодня" : "На " + date;
+        String dateLabel = date.equals(LocalDate.now(clock)) ? "Сегодня" : "На " + date;
 
         StringBuilder sb = new StringBuilder();
         sb.append("<pre>");
