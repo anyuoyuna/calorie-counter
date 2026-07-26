@@ -100,15 +100,4 @@ public class FoodParsingService {
             return null;
         }
     }
-
-    private String stripMarkdownFences(String text) {
-        String trimmed = text.trim();
-        if (trimmed.startsWith("```")) {
-            trimmed = trimmed.replaceFirst("^```(json)?", "").trim();
-            if (trimmed.endsWith("```")) {
-                trimmed = trimmed.substring(0, trimmed.length() - 3).trim();
-            }
-        }
-        return trimmed;
-    }
 }

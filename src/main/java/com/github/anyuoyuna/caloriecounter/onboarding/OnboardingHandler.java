@@ -1,13 +1,9 @@
 package com.github.anyuoyuna.caloriecounter.onboarding;
 
+import com.github.anyuoyuna.caloriecounter.domain.profile.OnboardingCompletionService;
 import com.github.anyuoyuna.caloriecounter.entity.enums.ActivityLevel;
 import com.github.anyuoyuna.caloriecounter.entity.enums.Gender;
 import com.github.anyuoyuna.caloriecounter.entity.enums.GoalType;
-import com.github.anyuoyuna.caloriecounter.repository.UserProfileRepository;
-import com.github.anyuoyuna.caloriecounter.repository.UserRepository;
-import com.github.anyuoyuna.caloriecounter.repository.WeightLogRepository;
-import com.github.anyuoyuna.caloriecounter.domain.profile.CalorieCalculationService;
-import com.github.anyuoyuna.caloriecounter.domain.profile.OnboardingCompletionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -26,20 +22,9 @@ public class OnboardingHandler {
 
     private final Map<Long, OnboardingState> activeSessions = new ConcurrentHashMap<>();
 
-    private final UserRepository userRepo;
-    private final UserProfileRepository profileRepo;
-    private final WeightLogRepository weightLogRepo;
-    private final CalorieCalculationService calorieService;
     private final OnboardingCompletionService completionService;
 
-    public OnboardingHandler(UserRepository userRepo,
-                             UserProfileRepository profileRepo,
-                             WeightLogRepository weightLogRepo,
-                             CalorieCalculationService calorieService, OnboardingCompletionService completionService) {
-        this.userRepo = userRepo;
-        this.profileRepo = profileRepo;
-        this.weightLogRepo = weightLogRepo;
-        this.calorieService = calorieService;
+    public OnboardingHandler(OnboardingCompletionService completionService) {
         this.completionService = completionService;
     }
 

@@ -3,6 +3,7 @@ package com.github.anyuoyuna.caloriecounter.domain.activity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedActivity;
 import com.github.anyuoyuna.caloriecounter.entity.User;
+import com.github.anyuoyuna.caloriecounter.entity.WeightLog;
 import com.github.anyuoyuna.caloriecounter.repository.WeightLogRepository;
 import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import lombok.extern.slf4j.Slf4j;
@@ -59,23 +60,24 @@ public class ActivityParsingService {
     }
 
     public ParsedActivity parse(User user, String userText) {
-        String today = LocalDate.now(clock).format(DATE_FMT);
         double weightKg = weightLogRepo.findFirstByUserOrderByLoggedAtDesc(user)
-                .map(w -> w.getWeightKg())
+                .map(WeightLog::getWeightKg)
                 .orElse(70.0);
 
+        String today = LocalDate.now(clock).format(DATE_FMT);
         String prompt = PROMPT_TEMPLATE.formatted(today, weightKg, userText);
 
         String rawResponse = aiClient.generateContent(prompt);
         if (rawResponse == null) {
-            log.warn("Gemini вернула пустой ответ на текст активности: {}", userText);
+            log.warn("Gemini вернула пустой ответ на активность");
             return null;
         }
 
         try {
+            // Читаем напрямую, без stripMarkdownFences
             return objectMapper.readValue(rawResponse, ParsedActivity.class);
         } catch (Exception e) {
-            log.error("Не удалось распарсить JSON активности от Gemini. Сырой ответ: {}", rawResponse, e);
+            log.error("Ошибка парсинга JSON активности. Ответ: {}", rawResponse, e);
             return null;
         }
     }

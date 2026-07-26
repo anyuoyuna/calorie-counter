@@ -1,5 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.domain.food;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.anyuoyuna.caloriecounter.entity.MealEntry;
 import com.github.anyuoyuna.caloriecounter.entity.User;
 import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,32 +23,39 @@ public class WeeklySummaryService {
 
     private final MealEntryRepository mealEntryRepo;
     private final AiClient aiClient;
+    private final ObjectMapper objectMapper;
     private final Clock clock;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM");
 
+    // Обновленный промпт: теперь просим вернуть JSON
     private static final String PROMPT_TEMPLATE = """
             Ты — дружелюбный ассистент по питанию. Вот данные пользователя за последние 7 дней:
-            цель и факт по калориям и БЖУ+клетчатке за каждый день.
+            цель и факт по калориям и БЖУ за каждый день.
 
             %s
 
-            Напиши короткое (4-6 предложений) человеческое саммари недели на русском языке. Тон - дружелюбный, без осуждения, по-деловому честный.
-            Отметь: сколько дней уложилась в норму, были ли заметные выходы за пределы (в плюс или в минус) и в какие дни,
-            есть ли что-то, на что стоит обратить внимание (например, стабильно низкая клетчатка или белок).
-            Не используй markdown-разметку, простой текст. Не придумывай факты сверх того, что дано в данных.
+            Напиши короткое (4-6 предложений) человеческое саммари недели на русском языке.
+            Тон - дружелюбный, честный. Отметь успехи и то, на что стоит обратить внимание.
+            
+            Ответ верни строго в формате JSON:
+            {"summary": "текст твоего ответа"}
             """;
 
-    public WeeklySummaryService(MealEntryRepository mealEntryRepo, AiClient aiClient, Clock clock) {
+    public WeeklySummaryService(MealEntryRepository mealEntryRepo,
+                                AiClient aiClient,
+                                ObjectMapper objectMapper,
+                                Clock clock) {
         this.mealEntryRepo = mealEntryRepo;
         this.aiClient = aiClient;
+        this.objectMapper = objectMapper;
         this.clock = clock;
     }
 
     public record DaySummary(LocalDate date, double calories, double protein, double fat, double carbs, double fiber) {}
 
     public String buildWeeklySummary(User user) {
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = LocalDate.now(clock); // Используем наш Clock
         LocalDate weekStart = today.minusDays(6);
 
         List<MealEntry> entries = mealEntryRepo.findByUserAndEatenAtBetween(
@@ -53,11 +63,13 @@ public class WeeklySummaryService {
 
         Map<LocalDate, List<MealEntry>> byDay = new LinkedHashMap<>();
         for (LocalDate d = weekStart; !d.isAfter(today); d = d.plusDays(1)) {
-            byDay.put(d, new java.util.ArrayList<>());
+            byDay.put(d, new ArrayList<>());
         }
         for (MealEntry e : entries) {
             LocalDate day = e.getEatenAt().toLocalDate();
-            byDay.computeIfAbsent(day, k -> new java.util.ArrayList<>()).add(e);
+            if (byDay.containsKey(day)) {
+                byDay.get(day).add(e);
+            }
         }
 
         StringBuilder dataBlock = new StringBuilder();
@@ -67,14 +79,20 @@ public class WeeklySummaryService {
         }
 
         String prompt = PROMPT_TEMPLATE.formatted(dataBlock.toString());
+        String rawResponse = aiClient.generateContent(prompt);
 
-        String narrative = aiClient.generateContent(prompt);
-        if (narrative == null) {
-            log.warn("Не удалось получить недельное саммари от Gemini для пользователя {}", user.getTelegramId());
-            return "Не получилось сформировать саммари недели, попробуй чуть позже.";
+        if (rawResponse == null) {
+            return "Не удалось получить ответ от ИИ.";
         }
 
-        return narrative.trim();
+        try {
+            // Парсим JSON и достаем поле "summary"
+            JsonNode root = objectMapper.readTree(rawResponse);
+            return root.get("summary").asText();
+        } catch (Exception e) {
+            log.error("Ошибка парсинга недельного саммари. Ответ был: {}", rawResponse, e);
+            return "Не удалось сформировать красивый отчет, но данные сохранены.";
+        }
     }
 
     private DaySummary calculateDaySummary(LocalDate date, List<MealEntry> entries) {
@@ -94,13 +112,12 @@ public class WeeklySummaryService {
 
     private String formatDayLine(DaySummary s, User user) {
         return String.format(
-                "%s: калории %.0f/%d ккал, белок %.0f/%.0f г, жиры %.0f/%.0f г, углеводы %.0f/%.0f г, клетчатка %.0f/%.0f г",
+                "%s: факт %.0f/%d ккал, Б%.0f/%.0f г, Ж%.0f/%.0f г, У%.0f/%.0f г",
                 s.date().format(DATE_FMT),
                 s.calories(), user.getDailyCalorieGoal(),
                 s.protein(), user.getDailyProteinGoal(),
                 s.fat(), user.getDailyFatGoal(),
-                s.carbs(), user.getDailyCarbsGoal(),
-                s.fiber(), user.getDailyFiberGoal()
+                s.carbs(), user.getDailyCarbsGoal()
         );
     }
 }
