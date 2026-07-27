@@ -28,7 +28,6 @@ public class WeeklySummaryService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM");
 
-    // Обновленный промпт: теперь просим вернуть JSON
     private static final String PROMPT_TEMPLATE = """
             Ты — дружелюбный ассистент по питанию. Вот данные пользователя за последние 7 дней:
             цель и факт по калориям и БЖУ за каждый день.

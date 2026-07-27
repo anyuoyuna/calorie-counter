@@ -1,6 +1,5 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.food;
 
-import com.github.anyuoyuna.caloriecounter.domain.food.MealInputValidator;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedFoodItem;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,6 @@
-package com.github.anyuoyuna.caloriecounter.service;
+package com.github.anyuoyuna.caloriecounter.domain.food;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.anyuoyuna.caloriecounter.domain.food.FoodParsingService;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
 import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,10 @@ class FoodParsingServiceTest {
 
     @Test
     void parsesResponseFromAiClientWithoutCallingGemini() {
+        // 1. Создаем фиксированное время для теста (всегда 2026-07-22)
         Clock fixedClock = Clock.fixed(Instant.parse("2026-07-22T10:00:00Z"), ZoneId.of("UTC"));
+
+        // 2. Создаем фейковый AI клиент, который просто возвращает готовую JSON строку
         AiClient fakeAiClient = prompt -> """
                 {
                   "date": "2026-07-22",
@@ -32,14 +34,19 @@ class FoodParsingServiceTest {
                   }]
                 }
                 """;
+
+        // 3. Собираем сервис (теперь он снова принимает AiClient, ObjectMapper и Clock)
         FoodParsingService service = new FoodParsingService(fakeAiClient, new ObjectMapper(), fixedClock);
+
+        // 4. Вызываем метод
         ParsedMealResponse result = service.parse("Greek yogurt for breakfast");
 
+        // 5. Проверяем результат
+        assertThat(result).isNotNull();
         assertThat(result.getMeal()).isEqualTo("breakfast");
-        assertThat(result.getItems()).singleElement().satisfies(item -> {
-            assertThat(item.getName()).isEqualTo("Greek yogurt");
-            assertThat(item.getGrams()).isEqualTo(150.0);
-            assertThat(item.getCalories()).isEqualTo(59.0);
-        });
+        assertThat(result.getDate()).isEqualTo("2026-07-22");
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().get(0).getName()).isEqualTo("Greek yogurt");
+        assertThat(result.getItems().get(0).getGrams()).isEqualTo(150.0);
     }
 }

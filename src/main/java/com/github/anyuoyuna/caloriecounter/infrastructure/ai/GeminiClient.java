@@ -3,6 +3,7 @@ package com.github.anyuoyuna.caloriecounter.infrastructure.ai;
 import com.github.anyuoyuna.caloriecounter.exception.GeminiUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
@@ -14,80 +15,79 @@ import java.util.Map;
 @Component
 public class GeminiClient implements AiClient {
 
-    private static final String BASE_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
-
-    private static final int MAX_RETRIES = 3;
-    private static final long RETRY_DELAY_MS = 2000;
-
     private final RestClient restClient;
     private final String apiKey;
 
-    public GeminiClient(@Value("${gemini.api.key}") String apiKey) {
+    private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 2000;
+
+    public GeminiClient(RestClient restClient, @Value("${gemini.api.key}") String apiKey) {
+        this.restClient = restClient;
         this.apiKey = apiKey;
-        this.restClient = RestClient.create();
     }
 
     @Override
     public String generateContent(String prompt) {
-        Map<String, Object> requestBody = Map.of(
-                "contents", List.of(
-                        Map.of("parts", List.of(
-                                Map.of("text", prompt)
-                        ))
-                ),
-                "generationConfig", Map.of(
-                        "response_mime_type", "application/json"
-                )
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("response_mime_type", "application/json")
         );
 
-        HttpServerErrorException.ServiceUnavailable lastError = null;
+        HttpServerErrorException.ServiceUnavailable last503Error = null;
 
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 Map<String, Object> response = restClient.post()
-                        .uri(BASE_URL + "?key=" + apiKey)
-                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                        .body(requestBody)
+                        .uri(GEMINI_URL + "?key=" + apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(body)
                         .retrieve()
                         .body(Map.class);
 
-                return extractText(response);
+                String rawText = extractText(response);
+                return stripMarkdownFences(rawText);
 
             } catch (HttpServerErrorException.ServiceUnavailable e) {
-                lastError = e;
+                last503Error = e;
                 log.warn("Gemini перегружена (503), попытка {}/{}", attempt, MAX_RETRIES);
                 if (attempt < MAX_RETRIES) {
-                    sleep(RETRY_DELAY_MS * attempt);
+                    sleep(RETRY_DELAY_MS * attempt); // С каждой попыткой ждем чуть дольше
                 }
             } catch (Exception e) {
-                log.error("Ошибка при обращении к Gemini API", e);
+                log.error("Ошибка при обращении к Gemini: {}", e.getMessage());
                 return null;
             }
         }
 
-        log.error("Gemini недоступна после {} попыток", MAX_RETRIES, lastError);
-        throw new GeminiUnavailableException("Gemini API недоступна после " + MAX_RETRIES + " попыток", lastError);
+        throw new GeminiUnavailableException("Gemini сейчас недоступна, попробуй позже", last503Error);
     }
 
-    private void sleep(long millis) {
+    private String extractText(Map<String, Object> response) {
         try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            if (response == null) return null;
+            List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
+            Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+            List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+            return (String) parts.get(0).get("text");
+        } catch (Exception e) {
+            return null;
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractText(Map<String, Object> response) {
-        if (response == null) return null;
+    private String stripMarkdownFences(String text) {
+        if (text == null) return null;
+        String trimmed = text.trim();
+        if (trimmed.startsWith("```")) {
+            trimmed = trimmed.replaceFirst("^```[a-z]*\\s*", "");
+            if (trimmed.endsWith("```")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 3);
+            }
+        }
+        return trimmed.trim();
+    }
 
-        List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
-        if (candidates == null || candidates.isEmpty()) return null;
-
-        Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
-        List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
-
-        return (String) parts.get(0).get("text");
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ignored) { }
     }
 }

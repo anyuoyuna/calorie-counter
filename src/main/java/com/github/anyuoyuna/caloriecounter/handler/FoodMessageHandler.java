@@ -36,6 +36,9 @@ public class FoodMessageHandler {
         ParsedMealResponse parsed;
         try {
             parsed = foodParsingService.parse(text);
+            if (parsed == null) {
+                return BotResponse.plain("Не поняла, что за еда. Попробуй описать подробнее.");
+            }
         } catch (GeminiUnavailableException e) {
             log.warn("Gemini недоступна для пользователя {}", user.getTelegramId());
             return BotResponse.plain("Сервис ИИ сейчас перегружен, попробуй отправить сообщение ещё раз через минуту.");

@@ -1,17 +1,25 @@
 package com.github.anyuoyuna.caloriecounter.domain.assistant;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.anyuoyuna.caloriecounter.dto.AssistantIntent;
-import com.github.anyuoyuna.caloriecounter.infrastructure.ai.AiClient;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Slf4j
 @Service
 public class AssistantService {
 
-    private final AiClient aiClient;
-    private final ObjectMapper objectMapper;
+    interface IntentClassifier {
+        @SystemMessage(SYSTEM_PROMPT)
+        AssistantIntent classify(@UserMessage String text);
+    }
+
+    private final IntentClassifier classifier;
 
     private static final String SYSTEM_PROMPT = """
             Ты — диспетчер личного ассистента. Твоя задача — классифицировать сообщение пользователя.
@@ -32,20 +40,20 @@ public class AssistantService {
             }
             """;
 
-    public AssistantService(AiClient aiClient, ObjectMapper objectMapper) {
-        this.aiClient = aiClient;
-        this.objectMapper = objectMapper;
+    public AssistantService(GoogleAiGeminiChatModel chatModel) {
+        this.classifier = AiServices.builder(IntentClassifier.class)
+                .chatLanguageModel(chatModel)
+                .build();
     }
 
-    public AssistantIntent analyze(String text) {
-        String prompt = SYSTEM_PROMPT + "\n\nТекст пользователя: " + text;
-        String response = aiClient.generateContent(prompt);
 
+    public AssistantIntent analyze(String text) {
         try {
-            return objectMapper.readValue(response, AssistantIntent.class);
+            // 3. Просто вызываем метод, библиотека сама сделает запрос и распарсит JSON!
+            return classifier.classify(text);
         } catch (Exception e) {
-            log.error("Ошибка при анализе намерения: {}", response, e);
-            return new AssistantIntent("UNKNOWN", null);
+            // Если LangChain4j упадет, вернем дефолт
+            return new AssistantIntent("UNKNOWN", List.of());
         }
     }
 }
