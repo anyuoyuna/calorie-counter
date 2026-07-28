@@ -183,7 +183,7 @@ public class OnboardingHandler {
                         button("Набор массы", "GAIN_MUSCLE")
                 ));
     }
-
+//TODO исправить тут на textblock
     private SendMessage askActivityLevel(Long chatId) {
         return withButtons(chatId,
                 "Базовый уровень активности (без учёта отдельных тренировок)?\n\n" +

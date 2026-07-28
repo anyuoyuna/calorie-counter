@@ -41,9 +41,9 @@ public class AssistantService {
             }
             """;
 
-    public AssistantService(ChatLanguageModel chatModel) {
+    public AssistantService(ChatLanguageModel ollamaChatModel) {
         this.classifier = AiServices.builder(IntentClassifier.class)
-                .chatLanguageModel(chatModel)
+                .chatLanguageModel(ollamaChatModel)
                 .build();
     }
 

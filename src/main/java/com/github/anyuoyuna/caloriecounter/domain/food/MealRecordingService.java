@@ -6,9 +6,10 @@ import com.github.anyuoyuna.caloriecounter.entity.FoodItem;
 import com.github.anyuoyuna.caloriecounter.entity.MealEntry;
 import com.github.anyuoyuna.caloriecounter.entity.User;
 import com.github.anyuoyuna.caloriecounter.entity.enums.FoodSource;
+import com.github.anyuoyuna.caloriecounter.infrastructure.ai.EmbeddingClient;
 import com.github.anyuoyuna.caloriecounter.repository.FoodItemRepository;
 import com.github.anyuoyuna.caloriecounter.repository.MealEntryRepository;
-import com.github.anyuoyuna.caloriecounter.infrastructure.ai.EmbeddingClient;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class MealRecordingService {
 
     private final FoodItemRepository foodItemRepo;
@@ -30,17 +32,6 @@ public class MealRecordingService {
     private final EmbeddingClient embeddingClient;
     private final MealInputValidator mealInputValidator;
     private final Clock clock;
-
-    public MealRecordingService(FoodItemRepository foodItemRepo,
-                                MealEntryRepository mealEntryRepo,
-                                EmbeddingClient embeddingClient,
-                                MealInputValidator mealInputValidator, Clock clock) {
-        this.foodItemRepo = foodItemRepo;
-        this.mealEntryRepo = mealEntryRepo;
-        this.embeddingClient = embeddingClient;
-        this.mealInputValidator = mealInputValidator;
-        this.clock = clock;
-    }
 
     public record RecordingResult(List<MealEntry> savedEntries,
                                   List<String> unrecognizedNames,
@@ -61,9 +52,7 @@ public class MealRecordingService {
                 unrecognizedNames.add(item.getOriginalInput());
                 continue;
             }
-
             FoodItem foodItem = findOrCreateFoodItem(item);
-
             MealEntry entry = new MealEntry();
             entry.setUser(user);
             entry.setFoodItem(foodItem);
@@ -86,40 +75,48 @@ public class MealRecordingService {
     }
 
     private FoodItem findOrCreateFoodItem(ParsedFoodItem item) {
-
-        Optional<FoodItem> existing = foodItemRepo.findByNameIgnoreCase(item.getCleanName());
-        if (existing.isPresent()) {
-            log.info("Продукт '{}' найден в локальном кэше (БД)", item.getCleanName());
-            return existing.get();
+        Optional<FoodItem> exactMatch = foodItemRepo.findByNameIgnoreCase(item.getCleanName());
+        if (exactMatch.isPresent()) {
+            log.info("Найден точный матч для '{}'", item.getCleanName());
+            return exactMatch.get();
         }
 
-        float[] newEmbedding = embeddingClient.embed(item.getCleanName());
-
-        if (newEmbedding != null) {
-            String vectorStr = toVectorString(newEmbedding);
+        float[] newVector = embeddingClient.embed(item.getCleanName());
+        if (newVector != null) {
+            String vectorStr = toVectorString(newVector);
             Optional<FoodItem> similar = foodItemRepo.findMostSimilar(vectorStr);
 
             if (similar.isPresent() && similar.get().getEmbedding() != null) {
-                double distance = cosineDistance(newEmbedding, similar.get().getEmbedding());
+                double distance = cosineDistance(newVector, similar.get().getEmbedding());
                 if (distance < 0.15) {
-                    log.info("Найден похожий продукт '{}' для запроса '{}', расстояние={}",
-                            similar.get().getName(), item.getCleanName(), distance);
+                    log.info("Семантический поиск: '{}' похоже на '{}' (dist={})",
+                            item.getCleanName(), similar.get().getName(), String.format("%.4f", distance));
                     return similar.get();
                 }
             }
         }
 
+        log.info("Ничего не нашли для '{}', создаем новую запись", item.getCleanName());
         FoodItem fi = new FoodItem();
         fi.setName(item.getCleanName());
-        fi.setCalories(item.getCalories() != null ? item.getCalories() : 0.0);
-        fi.setProtein(item.getProtein() != null ? item.getProtein() : 0.0);
-        fi.setFat(item.getFat() != null ? item.getFat() : 0.0);
-        fi.setCarbs(item.getCarbs() != null ? item.getCarbs() : 0.0);
-        fi.setFiber(item.getFiber() != null ? item.getFiber() : 0.0);
         fi.setSource(FoodSource.AI_GENERATED);
-        if (newEmbedding != null) {
-            fi.setEmbedding(newEmbedding);
-        }
+        fi.setEmbedding(newVector);
+
+        double portionGrams = (item.getGrams() != null && item.getGrams() > 0) ? item.getGrams() : 100.0;
+
+        double totalCal = (item.getTotalCalories() != null) ? item.getTotalCalories() : 0.0;
+        double totalProt = (item.getTotalProtein() != null) ? item.getTotalProtein() : 0.0;
+        double totalFat = (item.getTotalFat() != null) ? item.getTotalFat() : 0.0;
+        double totalCarb = (item.getTotalCarbs() != null) ? item.getTotalCarbs() : 0.0;
+        double totalFib = (item.getTotalFiber() != null) ? item.getTotalFiber() : 0.0;
+
+        fi.setName(item.getCleanName());
+        fi.setCalories((totalCal / portionGrams) * 100);
+        fi.setProtein((totalProt / portionGrams) * 100);
+        fi.setFat((totalFat / portionGrams) * 100);
+        fi.setCarbs((totalCarb / portionGrams) * 100);
+        fi.setFiber((totalFib / portionGrams) * 100);
+
         return foodItemRepo.save(fi);
     }
 

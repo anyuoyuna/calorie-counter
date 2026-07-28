@@ -17,11 +17,11 @@ class MealInputValidatorTest {
     void acceptsValidRecognizedAndUnrecognizedItems() {
         ParsedFoodItem recognized = food("Greek yogurt");
         recognized.setGrams(150.0);
-        recognized.setCalories(59.0);
-        recognized.setProtein(10.0);
-        recognized.setFat(0.4);
-        recognized.setCarbs(3.6);
-        recognized.setFiber(0.0);
+        recognized.setTotalCalories(59.0);
+        recognized.setTotalProtein(10.0);
+        recognized.setTotalFat(0.4);
+        recognized.setTotalCarbs(3.6);
+        recognized.setTotalFiber(0.0);
 
         ParsedFoodItem unrecognized = food("mystery dish");
 
@@ -38,7 +38,7 @@ class MealInputValidatorTest {
 
         ParsedFoodItem impossibleCalories = food("energy bar");
         impossibleCalories.setGrams(50.0);
-        impossibleCalories.setCalories(10_000.0);
+        impossibleCalories.setTotalCalories(10_000.0);
 
         ParsedFoodItem missingName = food(" ");
         missingName.setGrams(100.0);
@@ -84,7 +84,7 @@ class MealInputValidatorTest {
 
     private ParsedFoodItem food(String name) {
         ParsedFoodItem item = new ParsedFoodItem();
-        item.setName(name);
+        item.setCleanName(name);
         return item;
     }
 }

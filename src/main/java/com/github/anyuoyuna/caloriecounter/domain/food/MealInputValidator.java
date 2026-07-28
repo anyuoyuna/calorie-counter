@@ -37,24 +37,28 @@ public class MealInputValidator {
     }
 
     private boolean isValid(ParsedFoodItem item) {
+        String displayName = displayName(item);
+
         if (item == null || item.getOriginalInput() == null || item.getOriginalInput().isBlank()) {
             log.warn("Валидатор: пустое имя продукта");
             return false;
         }
-
-        if (!isInRange(item.getGrams(), 0.1, MAX_GRAMS_PER_ITEM, false)) {
-            log.warn("Валидатор: у продукта '{}' недопустимый вес порции: {}", item.getOriginalInput(), item.getGrams());
+        if (item.getGrams() == null || item.getGrams() < 0) {
+            log.warn("Валидатор: у продукта '{}' некорректный вес (null или < 0)", displayName);
+            return false;
+        }
+        if (item.getGrams() > MAX_GRAMS_PER_ITEM) {
+            log.warn("Валидатор: у продукта '{}' слишком большой вес", displayName);
+            return false;
+        }
+        if (item.getTotalCalories() == null || item.getTotalCalories() < 0 || item.getTotalCalories() > MAX_CALORIES_PER_100_GRAMS * 5) {
+            log.warn("Валидатор: у продукта '{}' подозрительные калории", displayName);
             return false;
         }
 
-        if (!isInRange(item.getCalories(), 0.0, MAX_CALORIES_PER_100_GRAMS, false)) {
-            log.warn("Валидатор: у продукта '{}' странные калории на 100г: {}", item.getOriginalInput(), item.getCalories());
-            return false;
-        }
-
-        if (!isMacroValid(item.getOriginalInput(), "Белки", item.getProtein()) ||
-                !isMacroValid(item.getOriginalInput(), "Жиры", item.getFat()) ||
-                !isMacroValid(item.getOriginalInput(), "Углеводы", item.getCarbs())) {
+        if (!isMacroValid(item.getOriginalInput(), "Белки", item.getTotalProtein()) ||
+                !isMacroValid(item.getOriginalInput(), "Жиры", item.getTotalFat()) ||
+                !isMacroValid(item.getOriginalInput(), "Углеводы", item.getTotalCarbs())) {
             return false;
         }
 
@@ -72,16 +76,6 @@ public class MealInputValidator {
             return false;
         }
         return true;
-    }
-
-    private boolean isInRange(Double value, double min, double max, boolean nullable) {
-        if (value == null) {
-            return nullable;
-        }
-        if (!Double.isFinite(value)) {
-            return false;
-        }
-        return value >= min && value <= max;
     }
 
     private String displayName(ParsedFoodItem item) {

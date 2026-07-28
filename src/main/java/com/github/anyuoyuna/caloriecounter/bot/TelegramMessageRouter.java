@@ -75,8 +75,8 @@ public class TelegramMessageRouter {
             case "QUESTION" -> questionMessageHandler.handle(text);
             case "GREETING" -> BotResponse.plainWithMenu("Привет! Я на связи. Что сегодня запишем?");
             default -> {
-                log.warn("Непонятный интент '{}', используем FoodHandler по умолчанию", intent.primaryIntent());
-                yield foodMessageHandler.handle(user, text);
+                log.warn("Не удалось определить интент для текста: {}", text);
+                yield BotResponse.plain("Я не совсем поняла запрос. Ты хочешь записать еду, тренировку или трату?");
             }
         };
     }

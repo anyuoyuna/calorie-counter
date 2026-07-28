@@ -1,5 +1,6 @@
 package com.github.anyuoyuna.caloriecounter.config;
 
+import com.github.anyuoyuna.caloriecounter.bot.LifeAssistantBot;
 import com.github.anyuoyuna.caloriecounter.domain.assistant.AssistantService;
 import com.github.anyuoyuna.caloriecounter.infrastructure.ai.GeneralAiAssistant;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -11,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import java.time.Duration;
 
@@ -19,10 +23,11 @@ public class AiConfig {
 
     @Bean
     @Primary
-    public ChatLanguageModel ollamaModel() {
+    public ChatLanguageModel ollamaChatModel() {
         return OllamaChatModel.builder()
                 .baseUrl("http://localhost:11434")
                 .modelName("qwen2.5-coder:7b")
+                .temperature(0.0)
                 .timeout(Duration.ofSeconds(60))
                 .format("json")
                 .build();
@@ -56,5 +61,12 @@ public class AiConfig {
         return AiServices.builder(GeneralAiAssistant.class)
                 .chatLanguageModel(geminiModel)
                 .build();
+    }
+
+    @Bean
+    public TelegramBotsApi telegramBotsApi(LifeAssistantBot bot) throws TelegramApiException {
+        TelegramBotsApi api = new TelegramBotsApi(DefaultBotSession.class);
+        api.registerBot(bot);
+        return api;
     }
 }

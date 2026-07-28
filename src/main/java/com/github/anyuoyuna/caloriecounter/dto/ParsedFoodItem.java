@@ -14,13 +14,13 @@ public class ParsedFoodItem {
 
     @JsonProperty("weight_source")
     private String weightSource; // "explicit" | "estimated" | "calculated"
-    private Double calories;
-    private Double protein;
-    private Double fat;
-    private Double carbs;
-    private Double fiber;
+    private Double totalCalories;
+    private Double totalProtein;
+    private Double totalFat;
+    private Double totalCarbs;
+    private Double totalFiber;
 
     public boolean isRecognized() {
-        return calories != null && grams != null;
+        return totalCalories != null && grams != null;
     }
 }
