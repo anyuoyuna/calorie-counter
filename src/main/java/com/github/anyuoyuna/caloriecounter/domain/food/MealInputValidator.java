@@ -2,21 +2,19 @@ package com.github.anyuoyuna.caloriecounter.domain.food;
 
 import com.github.anyuoyuna.caloriecounter.dto.ParsedFoodItem;
 import com.github.anyuoyuna.caloriecounter.dto.ParsedMealResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Treats data received from an LLM as untrusted input before it reaches persistence.
- */
+@Slf4j
 @Component
 public class MealInputValidator {
 
     private static final int MAX_ITEMS_PER_MEAL = 20;
     private static final double MAX_GRAMS_PER_ITEM = 5_000;
     private static final double MAX_CALORIES_PER_100_GRAMS = 1_000;
-    private static final double MAX_MACRO_GRAMS_PER_100_GRAMS = 100;
 
     public ValidationResult validate(ParsedMealResponse meal) {
         if (meal == null || meal.getItems() == null) {
@@ -39,24 +37,41 @@ public class MealInputValidator {
     }
 
     private boolean isValid(ParsedFoodItem item) {
-        if (item == null || item.getName() == null || item.getName().isBlank()) {
+        if (item == null || item.getOriginalInput() == null || item.getOriginalInput().isBlank()) {
+            log.warn("Валидатор: пустое имя продукта");
             return false;
         }
 
-        if (!(isInRange(item.getGrams(), 0, MAX_GRAMS_PER_ITEM, true)
-                && isInRange(item.getCalories(), 0, MAX_CALORIES_PER_100_GRAMS, true)
-                && isInRange(item.getProtein(), 0, MAX_MACRO_GRAMS_PER_100_GRAMS, true)
-                && isInRange(item.getFat(), 0, MAX_MACRO_GRAMS_PER_100_GRAMS, true)
-                && isInRange(item.getCarbs(), 0, MAX_MACRO_GRAMS_PER_100_GRAMS, true)
-                && isInRange(item.getFiber(), 0, MAX_MACRO_GRAMS_PER_100_GRAMS, true))) {
+        if (!isInRange(item.getGrams(), 0.1, MAX_GRAMS_PER_ITEM, false)) {
+            log.warn("Валидатор: у продукта '{}' недопустимый вес порции: {}", item.getOriginalInput(), item.getGrams());
             return false;
         }
 
-        if (!item.isRecognized()) {
-            return hasNoNutritionValues(item);
+        if (!isInRange(item.getCalories(), 0.0, MAX_CALORIES_PER_100_GRAMS, false)) {
+            log.warn("Валидатор: у продукта '{}' странные калории на 100г: {}", item.getOriginalInput(), item.getCalories());
+            return false;
         }
 
-        return item.getProtein() != null && item.getFat() != null && item.getCarbs() != null;
+        if (!isMacroValid(item.getOriginalInput(), "Белки", item.getProtein()) ||
+                !isMacroValid(item.getOriginalInput(), "Жиры", item.getFat()) ||
+                !isMacroValid(item.getOriginalInput(), "Углеводы", item.getCarbs())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean isMacroValid(String itemName, String macroName, Double value) {
+        if (value == null) {
+            log.warn("Валидатор: у продукта '{}' {} = null. Пропускаем.", itemName, macroName);
+            return false;
+        }
+        if (value < 0 || value > 100) {
+            log.warn("Валидатор: у продукта '{}' некорректное значение {}: {} (должно быть 0..100)",
+                    itemName, macroName, value);
+            return false;
+        }
+        return true;
     }
 
     private boolean isInRange(Double value, double min, double max, boolean nullable) {
@@ -69,18 +84,9 @@ public class MealInputValidator {
         return value >= min && value <= max;
     }
 
-    private boolean hasNoNutritionValues(ParsedFoodItem item) {
-        return item.getGrams() == null
-                && item.getCalories() == null
-                && item.getProtein() == null
-                && item.getFat() == null
-                && item.getCarbs() == null
-                && item.getFiber() == null;
-    }
-
     private String displayName(ParsedFoodItem item) {
-        return item != null && item.getName() != null && !item.getName().isBlank()
-                ? item.getName()
+        return item != null && item.getOriginalInput() != null && !item.getOriginalInput().isBlank()
+                ? item.getOriginalInput()
                 : "позиция без названия";
     }
 

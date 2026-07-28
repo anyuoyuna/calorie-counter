@@ -17,11 +17,11 @@ public class FoodItem {
     private Long id;
 
     private String name;
-    private Double calories;
-    private Double protein;
-    private Double fat;
-    private Double carbs;
-    private Double fiber;
+    private Double calories = 0.0;
+    private Double protein = 0.0;
+    private Double fat = 0.0;
+    private Double carbs = 0.0;
+    private Double fiber = 0.0;
 
     @Enumerated(EnumType.STRING)
     private FoodSource source = FoodSource.LOCAL;

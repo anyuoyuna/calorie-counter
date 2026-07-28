@@ -8,7 +8,8 @@ import lombok.Setter;
 @Getter @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ParsedFoodItem {
-    private String name;
+    private String cleanName;
+    private String originalInput;
     private Double grams;
 
     @JsonProperty("weight_source")

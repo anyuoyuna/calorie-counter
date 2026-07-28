@@ -35,7 +35,7 @@ public class OnboardingCompletionService {
     @Transactional
     public int completeOnboarding(Long telegramId, OnboardingState state) {
         User user = userRepo.findByTelegramId(telegramId).orElseThrow();
-
+        user.setDisplayName(state.getDisplayName());
         UserProfile profile = new UserProfile();
         profile.setUser(user);
         profile.setGender(state.getGender());

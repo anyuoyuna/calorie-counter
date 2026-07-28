@@ -1,6 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.onboarding;
 
 public enum OnboardingStep {
+    ASK_NAME,
     ASK_GENDER,
     ASK_BIRTH_DATE,
     ASK_HEIGHT,

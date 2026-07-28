@@ -1,7 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.domain.assistant;
 
 import com.github.anyuoyuna.caloriecounter.dto.AssistantIntent;
-import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -27,6 +27,7 @@ public class AssistantService {
             Варианты первичного намерения (primaryIntent):
             - FOOD: если пользователь описывает, что он съел или выпил.
             - ACTIVITY: если пользователь описывает тренировку или физическую активность.
+            - FINANCE: любые денежные траты, покупки или доходы (например: "кофе 120 бат", "купила кроссовки", "такси 200").
             - QUESTION: если пользователь задает вопрос о питании или здоровье.
             - GREETING: если это просто приветствие или пустой разговор.
             - UNKNOWN: если вообще непонятно, что хочет пользователь.
@@ -36,23 +37,22 @@ public class AssistantService {
             Верни ответ строго в формате JSON:
             {
               "primaryIntent": "ИНТЕНТ",
-              "actions": ["FOOD", "ACTIVITY"]
+              "actions": ["СПИСОК_ИНТЕНТОВ"]
             }
             """;
 
-    public AssistantService(GoogleAiGeminiChatModel chatModel) {
+    public AssistantService(ChatLanguageModel chatModel) {
         this.classifier = AiServices.builder(IntentClassifier.class)
                 .chatLanguageModel(chatModel)
                 .build();
     }
 
-
     public AssistantIntent analyze(String text) {
         try {
-            // 3. Просто вызываем метод, библиотека сама сделает запрос и распарсит JSON!
+            log.info("Ollama анализирует интент для: {}", text);
             return classifier.classify(text);
         } catch (Exception e) {
-            // Если LangChain4j упадет, вернем дефолт
+            log.error("Ошибка при анализе намерения через Ollama: {}", e.getMessage());
             return new AssistantIntent("UNKNOWN", List.of());
         }
     }

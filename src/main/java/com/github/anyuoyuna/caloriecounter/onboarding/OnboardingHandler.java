@@ -38,7 +38,7 @@ public class OnboardingHandler {
     }
 
     public SendMessage firstQuestion(Long chatId) {
-        return askGender(chatId);
+        return simple(chatId, "Привет! Давай познакомимся. Как мне тебя называть?");
     }
 
     public SendMessage handleAnswer(Long telegramId, Long chatId, String text, String callbackData) {
@@ -51,6 +51,14 @@ public class OnboardingHandler {
         String value = callbackData != null ? callbackData : text;
 
         switch (state.getCurrentStep()) {
+            case ASK_NAME -> {
+                if (value == null || value.isBlank()) {
+                    return retry(chatId, "Пожалуйста, введи свое имя");
+                }
+                state.setDisplayName(value);
+                state.setCurrentStep(OnboardingStep.ASK_GENDER);
+                return askGender(chatId);
+            }
             case ASK_GENDER -> {
                 state.setGender(Gender.valueOf(value));
                 state.setCurrentStep(OnboardingStep.ASK_BIRTH_DATE);

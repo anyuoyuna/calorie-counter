@@ -20,6 +20,7 @@ public class MealEntry {
     @ManyToOne
     private FoodItem foodItem;
 
+    private String foodName;
     private Double grams;
     private LocalDateTime eatenAt;
 }

@@ -57,8 +57,8 @@ public class MealRecordingService {
 
         for (ParsedFoodItem item : validationResult.acceptedItems()) {
             if (!item.isRecognized()) {
-                log.warn("Продукт не распознан моделью: {}", item.getName());
-                unrecognizedNames.add(item.getName());
+                log.warn("Продукт не распознан моделью: {}", item.getOriginalInput());
+                unrecognizedNames.add(item.getOriginalInput());
                 continue;
             }
 
@@ -67,6 +67,7 @@ public class MealRecordingService {
             MealEntry entry = new MealEntry();
             entry.setUser(user);
             entry.setFoodItem(foodItem);
+            entry.setFoodName(item.getOriginalInput());
             entry.setGrams(item.getGrams());
             entry.setEatenAt(eatenAt);
             mealEntryRepo.save(entry);
@@ -85,7 +86,14 @@ public class MealRecordingService {
     }
 
     private FoodItem findOrCreateFoodItem(ParsedFoodItem item) {
-        float[] newEmbedding = embeddingClient.embed(item.getName());
+
+        Optional<FoodItem> existing = foodItemRepo.findByNameIgnoreCase(item.getCleanName());
+        if (existing.isPresent()) {
+            log.info("Продукт '{}' найден в локальном кэше (БД)", item.getCleanName());
+            return existing.get();
+        }
+
+        float[] newEmbedding = embeddingClient.embed(item.getCleanName());
 
         if (newEmbedding != null) {
             String vectorStr = toVectorString(newEmbedding);
@@ -95,19 +103,19 @@ public class MealRecordingService {
                 double distance = cosineDistance(newEmbedding, similar.get().getEmbedding());
                 if (distance < 0.15) {
                     log.info("Найден похожий продукт '{}' для запроса '{}', расстояние={}",
-                            similar.get().getName(), item.getName(), distance);
+                            similar.get().getName(), item.getCleanName(), distance);
                     return similar.get();
                 }
             }
         }
 
         FoodItem fi = new FoodItem();
-        fi.setName(item.getName());
-        fi.setCalories(item.getCalories());
-        fi.setProtein(item.getProtein());
-        fi.setFat(item.getFat());
-        fi.setCarbs(item.getCarbs());
-        fi.setFiber(item.getFiber());
+        fi.setName(item.getCleanName());
+        fi.setCalories(item.getCalories() != null ? item.getCalories() : 0.0);
+        fi.setProtein(item.getProtein() != null ? item.getProtein() : 0.0);
+        fi.setFat(item.getFat() != null ? item.getFat() : 0.0);
+        fi.setCarbs(item.getCarbs() != null ? item.getCarbs() : 0.0);
+        fi.setFiber(item.getFiber() != null ? item.getFiber() : 0.0);
         fi.setSource(FoodSource.AI_GENERATED);
         if (newEmbedding != null) {
             fi.setEmbedding(newEmbedding);

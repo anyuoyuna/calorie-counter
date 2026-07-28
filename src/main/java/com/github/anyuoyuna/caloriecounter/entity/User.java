@@ -13,6 +13,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String displayName;
+
     @Column(unique = true, nullable = false)
     private Long telegramId;
 

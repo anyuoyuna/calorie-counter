@@ -11,8 +11,8 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class OnboardingState {
-    private OnboardingStep currentStep = OnboardingStep.ASK_GENDER;
-
+    private OnboardingStep currentStep = OnboardingStep.ASK_NAME;
+    private String displayName;
     private Gender gender;
     private LocalDate birthDate;
     private Double heightCm;

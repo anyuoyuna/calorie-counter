@@ -44,7 +44,7 @@ public class FoodMessageHandler {
             return BotResponse.plain("Сервис ИИ сейчас перегружен, попробуй отправить сообщение ещё раз через минуту.");
         }
 
-        if (parsed == null || parsed.getItems() == null || parsed.getItems().isEmpty()) {
+        if (parsed.getItems() == null || parsed.getItems().isEmpty()) {
             return BotResponse.plain("Не поняла, что за еда. Попробуй описать подробнее.");
         }
 
