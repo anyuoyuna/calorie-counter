@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -53,6 +54,8 @@ public class FinanceService {
         expense.setCategory(ExpenseCategory.valueOf(parsed.category()));
         expense.setDescription(parsed.description());
         expense.setType("-");
+        String uuid = UUID.randomUUID().toString(); // Генерируем уникальный код
+        expense.setExternalId(uuid);
 
         expenseRepository.save(expense);
 
@@ -62,7 +65,8 @@ public class FinanceService {
                 expense.getCategory().name(),
                 expense.getDescription() != null ? expense.getDescription() : "",
                 expense.getAmount(),
-                expense.getType()
+                expense.getType(),
+                uuid
         );
 
         googleSheetsService.appendRow("Операции", row);

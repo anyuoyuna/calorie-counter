@@ -1,6 +1,7 @@
 package com.github.anyuoyuna.caloriecounter.bot;
 
 import com.github.anyuoyuna.caloriecounter.domain.assistant.AssistantService;
+import com.github.anyuoyuna.caloriecounter.domain.assistant.UndoService;
 import com.github.anyuoyuna.caloriecounter.domain.finance.FinanceService;
 import com.github.anyuoyuna.caloriecounter.domain.food.DailyReportService;
 import com.github.anyuoyuna.caloriecounter.domain.food.WeeklySummaryService;
@@ -35,9 +36,15 @@ public class TelegramMessageRouter {
     private final AssistantService assistantService;
     private final Clock clock;
     private final FinanceService financeService;
+    private final UndoService undoService;
 
     public BotResponse route(User user, String text) {
 
+        if (text.equalsIgnoreCase("/undo")) {
+            log.info("Пользователь {} запросил отмену действия", user.getDisplayName());
+            String message = undoService.undoLastAction(user);
+            return BotResponse.plain(message);
+        }
         if (text.equals("/start")) {
             return BotResponse.plainWithMenu("С возвращением! Просто пиши мне, что съела, или как потренировалась.");
         }

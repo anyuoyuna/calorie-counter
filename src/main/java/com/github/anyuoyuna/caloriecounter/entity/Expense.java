@@ -4,9 +4,11 @@ import com.github.anyuoyuna.caloriecounter.entity.enums.ExpenseCategory;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "expenses")
@@ -28,4 +30,10 @@ public class Expense {
     private String description;
     private BigDecimal amount;
     private String type;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    private String externalId;
 }
