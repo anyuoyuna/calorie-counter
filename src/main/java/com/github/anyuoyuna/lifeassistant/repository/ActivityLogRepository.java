@@ -1,0 +1,14 @@
+package com.github.anyuoyuna.lifeassistant.repository;
+
+import com.github.anyuoyuna.lifeassistant.entity.ActivityLog;
+import com.github.anyuoyuna.lifeassistant.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> {
+    List<ActivityLog> findByUserAndActivityDate(User user, LocalDate date);
+    Optional<ActivityLog> findFirstByUserOrderByCreatedAtDesc(User user);
+}
