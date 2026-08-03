@@ -33,3 +33,5 @@ build/
 .vscode/
 # Google Cloud credentials
 /src/main/resources/google-credentials.json
+
+.env

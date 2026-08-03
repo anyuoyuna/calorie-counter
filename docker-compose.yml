@@ -1,0 +1,39 @@
+version: '3.8'
+name: life-assistant
+
+services:
+  # Сервис базы данных
+  db:
+    image: ankane/pgvector:latest # Специальный образ Postgres с векторами
+    container_name: life-assistant-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: life_assistant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # Сервис твоего Java-приложения
+  app:
+    build: . # Указывает Docker искать Dockerfile в текущей папке
+    container_name: life-assistant-app
+    restart: always
+    depends_on:
+      - db # Сначала запустится база, потом приложение
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/life_assistant
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=your_password
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    # Это нужно, чтобы приложение могло достучаться до Ollama на хосте (твоем компе)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pgdata:

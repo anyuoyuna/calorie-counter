@@ -21,12 +21,24 @@ import java.time.Duration;
 @Configuration
 public class AiConfig {
 
+    @Value("${ollama.base-url}")
+    private String ollamaUrl;
+
+    @Value("${ollama.chat-model}")
+    private String ollamaChatModelName;
+
+    @Value("${ollama.embedding-model}")
+    private String ollamaEmbeddingModelName;
+
+    @Value("${gemini.chat-model}")
+    private String geminiModelName;
+
     @Bean
     @Primary
     public ChatLanguageModel ollamaChatModel() {
         return OllamaChatModel.builder()
-                .baseUrl("http://localhost:11434")
-                .modelName("qwen2.5-coder:7b")
+                .baseUrl(ollamaUrl)
+                .modelName(ollamaChatModelName)
                 .temperature(0.0)
                 .timeout(Duration.ofSeconds(60))
                 .format("json")
@@ -36,18 +48,17 @@ public class AiConfig {
     @Bean
     public OllamaEmbeddingModel embeddingModel() {
         return OllamaEmbeddingModel.builder()
-                .baseUrl("http://localhost:11434")
-                .modelName("nomic-embed-text")
+                .baseUrl(ollamaUrl)
+                .modelName(ollamaEmbeddingModelName)
                 .build();
     }
 
     @Bean
-    public ChatLanguageModel geminiModel(@Value("${gemini.api.key}") String apiKey) {
+    public ChatLanguageModel geminiChatModel(@Value("${gemini.api.key}") String apiKey) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(apiKey)
-                .modelName("gemini-1.5-flash")
+                .modelName(geminiModelName)
                 .temperature(0.0)
-                .logRequestsAndResponses(true)
                 .build();
     }
 
