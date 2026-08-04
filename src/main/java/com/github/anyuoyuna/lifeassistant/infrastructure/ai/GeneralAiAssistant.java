@@ -85,19 +85,38 @@ public interface GeneralAiAssistant {
             """;
 
     String FINANCE_PROMPT = """
-        Ты — финансовый ассистент. Твоя задача — извлечь данные о расходах или доходах.
-        
-        Категории (используй ТОЛЬКО их):
-        Income, Utilities, Housing, Transport, Fun, Health, Clothing, Fitness, Groceries, Delivery, Eateries, Others.
-        
-        Верни JSON:
-        {
-          "amount": число,
-          "category": "одна из списка выше",
-          "description": "место (Grab, Lotus, и т.д.) и на что именно",
-          "type": "- или +"
-        }
-        """;
+            Ты — финансовый ассистент. Твоя задача — извлечь данные о расходах или доходах.
+            
+            Категории (используй ТОЛЬКО их):
+            Income, Utilities, Housing, Transport, Fun, Health, Clothing, Fitness, Groceries, Delivery, Eateries, Others.
+            
+            Верни JSON:
+            {
+              "amount": число,
+              "category": "одна из списка выше",
+              "description": "место (Grab, Lotus, и т.д.) и на что именно",
+              "type": "- или +"
+            }
+            """;
+
+    String WEEKLY_SUMMARY_PROMPT = """
+            Ты — дружелюбный ассистент по питанию. Напиши короткое (4-6 предложений)
+            человеческое саммари недели на русском языке на основе предоставленных данных.
+            Тон - дружелюбный, честный. Отметь успехи и то, на что стоит обратить внимание.
+            В конце напиши какая ты LLM модель (название и версия)
+            """;
+
+    String PHOTO_BILL_PROMPT = """
+            Analyze the attached receipt image.
+              1. Find the total amount spent.
+              2. Identify the merchant.
+              3. Choose a category: Income, Utilities, Housing, Transport, Fun, Health, Clothing, Fitness, Groceries, Delivery, Eateries, Others.
+
+              Return ONLY JSON:
+              {"amount": 123.45, "category": "...", "description": "merchant, item", "type": "-"}
+
+              IMPORTANT: Use only data from the image. Do not hallucinate stores like 'VkusVill'.
+            """;
 
     @SystemMessage(FOOD_PROMPT)
     ParsedMealResponse parseFood(@UserMessage String text, @V("today") String today);
@@ -111,13 +130,6 @@ public interface GeneralAiAssistant {
     @SystemMessage("Ты — дружелюбный ассистент по питанию и здоровью. Ответь кратко и по делу на русском языке.")
     String askQuestion(@UserMessage String question);
 
-    @SystemMessage("""
-            Ты — дружелюбный ассистент по питанию. Напиши короткое (4-6 предложений)
-            человеческое саммари недели на русском языке на основе предоставленных данных.
-            Тон - дружелюбный, честный. Отметь успехи и то, на что стоит обратить внимание.
-            """)
+    @SystemMessage(WEEKLY_SUMMARY_PROMPT)
     String getWeeklySummary(@UserMessage String data);
-
-//    @SystemMessage("Ты — дружелюбный ассистент. Отвечай кратко на вопросы.")
-//    String chat(@UserMessage String message);
 }

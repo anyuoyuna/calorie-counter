@@ -8,6 +8,7 @@ import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.service.AiServices;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +34,10 @@ public class AiConfig {
     @Value("${gemini.chat-model}")
     private String geminiModelName;
 
-    @Bean
+    @Value("${gemini.api.key}")
+    private String geminiApiKey;
+
+    @Bean("ollamaModel")
     @Primary
     public ChatLanguageModel ollamaChatModel() {
         return OllamaChatModel.builder()
@@ -42,6 +46,8 @@ public class AiConfig {
                 .temperature(0.0)
                 .timeout(Duration.ofSeconds(60))
                 .format("json")
+                .logRequests(true)
+                .logResponses(true)
                 .build();
     }
 
@@ -53,24 +59,25 @@ public class AiConfig {
                 .build();
     }
 
-    @Bean
-    public ChatLanguageModel geminiChatModel(@Value("${gemini.api.key}") String apiKey) {
+    @Bean("geminiModel")
+    public ChatLanguageModel geminiChatModel() {
         return GoogleAiGeminiChatModel.builder()
-                .apiKey(apiKey)
+                .apiKey(geminiApiKey)
                 .modelName(geminiModelName)
                 .temperature(0.0)
+                .logRequestsAndResponses(true)
                 .build();
     }
 
     @Bean
-    public AssistantService assistantService(ChatLanguageModel ollamaModel) {
-        return new AssistantService(ollamaModel);
+    public AssistantService assistantService(@Qualifier("ollamaModel") ChatLanguageModel model) {
+        return new AssistantService(model);
     }
 
     @Bean
-    public GeneralAiAssistant generalAiAssistant(ChatLanguageModel geminiModel) {
+    public GeneralAiAssistant generalAiAssistant(@Qualifier("geminiModel") ChatLanguageModel model) {
         return AiServices.builder(GeneralAiAssistant.class)
-                .chatLanguageModel(geminiModel)
+                .chatLanguageModel(model)
                 .build();
     }
 

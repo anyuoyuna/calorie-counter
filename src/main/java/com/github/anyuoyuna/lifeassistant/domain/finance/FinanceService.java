@@ -1,5 +1,6 @@
 package com.github.anyuoyuna.lifeassistant.domain.finance;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedExpense;
 import com.github.anyuoyuna.lifeassistant.entity.Expense;
 import com.github.anyuoyuna.lifeassistant.entity.User;
@@ -8,7 +9,15 @@ import com.github.anyuoyuna.lifeassistant.infrastructure.ai.GeneralAiAssistant;
 import com.github.anyuoyuna.lifeassistant.infrastructure.google.GoogleSheetsService;
 import com.github.anyuoyuna.lifeassistant.repository.ExpenseRepository;
 import com.github.anyuoyuna.lifeassistant.repository.UserRepository;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,51 +36,48 @@ public class FinanceService {
     private final ExpenseRepository expenseRepository;
     private final Clock clock;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
+    private final ChatLanguageModel geminiModel;
 
     public FinanceService(GeneralAiAssistant aiAssistant,
                           GoogleSheetsService googleSheetsService,
                           ExpenseRepository expenseRepository,
-                          Clock clock, UserRepository userRepository) {
+                          Clock clock,
+                          UserRepository userRepository,
+                          ObjectMapper objectMapper,
+                          @Qualifier("geminiModel") ChatLanguageModel geminiModel) {
         this.aiAssistant = aiAssistant;
         this.googleSheetsService = googleSheetsService;
         this.expenseRepository = expenseRepository;
         this.clock = clock;
         this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+        this.geminiModel = geminiModel;
     }
 
     @Transactional
-    public Expense recordExpense(User user, String text) {
+    public Expense recordExpenseFromText(User user, String text) {
         ParsedExpense parsed = aiAssistant.parseExpense(text);
+        return saveParsedExpense(user, parsed);
+    }
 
-        if (parsed == null || parsed.amount() == null) {
-            throw new RuntimeException("Не удалось распознать сумму траты");
-        }
-
-        Expense expense = new Expense();
-        expense.setUser(user);
-        expense.setDate(LocalDate.now(clock));
-        expense.setAmount(parsed.amount());
-        expense.setCategory(ExpenseCategory.valueOf(parsed.category()));
-        expense.setDescription(parsed.description());
-        expense.setType("-");
-        String uuid = UUID.randomUUID().toString(); // Генерируем уникальный код
-        expense.setExternalId(uuid);
-
-        expenseRepository.save(expense);
-
-        List<Object> row = List.of(
-                expense.getDate().toString(),
-                user.getDisplayName(),
-                expense.getCategory().name(),
-                expense.getDescription() != null ? expense.getDescription() : "",
-                expense.getAmount(),
-                expense.getType(),
-                uuid
+    @Transactional
+    public Expense recordExpenseFromImage(User user, Image image) {
+        UserMessage message = UserMessage.from(
+                TextContent.from(GeneralAiAssistant.PHOTO_BILL_PROMPT),
+                ImageContent.from(image.base64Data(), image.mimeType())
         );
 
-        googleSheetsService.appendRow("Операции", row);
+        Response<AiMessage> response = geminiModel.generate(message);
+        String rawJson = response.content().text();
 
-        return expense;
+        try {
+            ParsedExpense parsed = objectMapper.readValue(stripMarkdownFences(rawJson), ParsedExpense.class);
+            return saveParsedExpense(user, parsed);
+        } catch (Exception e) {
+            log.error("Ошибка парсинга чека: {}", rawJson, e);
+            throw new RuntimeException("Не удалось распознать чек");
+        }
     }
 
     @Transactional
@@ -129,5 +135,47 @@ public class FinanceService {
             java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
             return LocalDate.parse(dateStr, dtf);
         }
+    }
+
+    private Expense saveParsedExpense(User user, ParsedExpense parsed) {
+        if (parsed == null || parsed.amount() == null) {
+            throw new RuntimeException("Не удалось распознать сумму");
+        }
+
+        Expense expense = new Expense();
+        expense.setUser(user);
+        expense.setDate(LocalDate.now(clock));
+        expense.setAmount(parsed.amount());
+        expense.setCategory(safeParseCategory(parsed.category()));
+        expense.setDescription(parsed.description());
+        expense.setType((parsed.type() != null && parsed.type().contains("+")) ? "+" : "-");
+        expense.setExternalId(UUID.randomUUID().toString());
+
+        expenseRepository.save(expense);
+
+        googleSheetsService.appendRow("Операции", List.of(
+                expense.getDate().toString(),
+                user.getDisplayName(),
+                expense.getCategory().name(),
+                expense.getDescription() != null ? expense.getDescription() : "",
+                expense.getAmount(),
+                expense.getType(),
+                expense.getExternalId()
+        ));
+
+        return expense;
+    }
+
+    private ExpenseCategory safeParseCategory(String cat) {
+        try {
+            return ExpenseCategory.valueOf(cat);
+        } catch (Exception e) {
+            return ExpenseCategory.Others;
+        }
+    }
+
+    private String stripMarkdownFences(String text) {
+        if (text == null) return null;
+        return text.replace("```json", "").replace("```", "").trim();
     }
 }

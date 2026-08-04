@@ -18,10 +18,7 @@ class FoodParsingServiceTest {
 
     @Test
     void shouldReturnParsedMealResponseUsingGeneralAiAssistant() {
-        // 1. Создаем фиксированное время
         Clock fixedClock = Clock.fixed(Instant.parse("2026-07-22T10:00:00Z"), ZoneId.of("UTC"));
-
-        // 2. Создаем заглушку (Fake) нашего ассистента
         GeneralAiAssistant fakeAssistant = new GeneralAiAssistant() {
             @Override
             public ParsedMealResponse parseFood(String text, String today) {
@@ -43,7 +40,6 @@ class FoodParsingServiceTest {
                 return response;
             }
 
-            // РЕАЛИЗУЕМ НОВЫЕ МЕТОДЫ ИНТЕРФЕЙСА (заглушки)
             @Override
             public String askQuestion(String question) { return null; }
 
@@ -57,13 +53,10 @@ class FoodParsingServiceTest {
             public ParsedExpense parseExpense(String text) { return null; }
         };
 
-        // 3. Инициализируем сервис
         FoodParsingService service = new FoodParsingService(fakeAssistant, fixedClock);
 
-        // 4. Выполняем тест
         ParsedMealResponse result = service.parse("2 яйца на завтрак");
 
-        // 5. Проверяем
         assertThat(result).isNotNull();
         assertThat(result.getDate()).isEqualTo("2026-07-22");
         assertThat(result.getItems()).hasSize(1);
