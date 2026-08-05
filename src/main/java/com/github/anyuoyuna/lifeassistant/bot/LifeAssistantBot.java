@@ -3,7 +3,6 @@ package com.github.anyuoyuna.lifeassistant.bot;
 import com.github.anyuoyuna.lifeassistant.domain.profile.ProfileEditHandler;
 import com.github.anyuoyuna.lifeassistant.entity.User;
 import com.github.anyuoyuna.lifeassistant.handler.FinanceMessageHandler;
-import com.github.anyuoyuna.lifeassistant.infrastructure.ai.GeneralAiAssistant;
 import com.github.anyuoyuna.lifeassistant.onboarding.OnboardingHandler;
 import com.github.anyuoyuna.lifeassistant.repository.UserRepository;
 import dev.langchain4j.data.image.Image;
@@ -44,7 +43,8 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
                             OnboardingHandler onboardingHandler,
                             ProfileEditHandler profileEditHandler,
                             MenuKeyboard menuKeyboard,
-                            TelegramMessageRouter router, FinanceMessageHandler financeMessageHandler, GeneralAiAssistant aiAssistant) {
+                            TelegramMessageRouter router,
+                            FinanceMessageHandler financeMessageHandler) {
         super(botToken);
         this.userRepo = userRepo;
         this.onboardingHandler = onboardingHandler;
