@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Service
 public class FoodParsingService {
 
-    private final GeneralAiAssistant aiAssistant; // Используем новый интерфейс
+    private final GeneralAiAssistant aiAssistant;
     private final Clock clock;
 
     public FoodParsingService(GeneralAiAssistant aiAssistant, Clock clock) {
@@ -22,20 +22,6 @@ public class FoodParsingService {
 
     public ParsedMealResponse parse(String userText) {
         String today = LocalDate.now(clock).toString();
-
-        log.info("Парсинг еды через GeneralAiAssistant: {}", userText);
-
-        // Магия LangChain4j: метод вернет сразу ГОТОВЫЙ объект
-        ParsedMealResponse response = aiAssistant.parseFood(userText, today);
-
-        if (response != null && response.getItems() != null) {
-            log.info("Ollama выдала позиций: {}. Первая позиция: {}",
-                    response.getItems().size(),
-                    response.getItems().isEmpty() ? "пусто" : response.getItems().get(0).getOriginalInput());
-        } else {
-            log.warn("Ollama вернула пустой или некорректный объект ParsedMealResponse");
-        }
-
-        return response;
+        return aiAssistant.parseFood(userText, today);
     }
 }

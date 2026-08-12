@@ -3,6 +3,9 @@ package com.github.anyuoyuna.lifeassistant.domain.profile;
 import com.github.anyuoyuna.lifeassistant.entity.User;
 import com.github.anyuoyuna.lifeassistant.entity.UserProfile;
 import com.github.anyuoyuna.lifeassistant.entity.WeightLog;
+import com.github.anyuoyuna.lifeassistant.entity.enums.ActivityLevel;
+import com.github.anyuoyuna.lifeassistant.entity.enums.Gender;
+import com.github.anyuoyuna.lifeassistant.entity.enums.GoalType;
 import com.github.anyuoyuna.lifeassistant.repository.UserProfileRepository;
 import com.github.anyuoyuna.lifeassistant.repository.WeightLogRepository;
 import org.springframework.stereotype.Service;
@@ -27,73 +30,67 @@ public class ProfileService {
 
     public String buildProfileSummary(User user) {
         UserProfile profile = profileRepo.findById(user.getId())
-                .orElseThrow(() -> new IllegalStateException("Профиль не найден, нужен онбординг"));
-
+                .orElseThrow(() -> new IllegalStateException("Profile not found, onboarding required"));
         Optional<WeightLog> latestOpt = weightLogRepo.findFirstByUserOrderByLoggedAtDesc(user);
         Optional<WeightLog> firstOpt = weightLogRepo.findFirstByUserOrderByLoggedAtAsc(user);
-
         int age = Period.between(profile.getBirthDate(), LocalDate.now()).getYears();
-
         StringBuilder sb = new StringBuilder();
-        sb.append("Профиль\n\n");
-        sb.append("Пол: ").append(genderLabel(profile.getGender())).append("\n");
-        sb.append("Возраст: ").append(age).append(" лет\n");
-        sb.append("Рост: ").append(profile.getHeightCm()).append(" см\n\n");
-
+        sb.append("Profile\n\n");
+        sb.append("Sex: ").append(genderLabel(profile.getGender())).append("\n");
+        sb.append("Age: ").append(age).append(" years\n");
+        sb.append("Height: ").append(profile.getHeightCm()).append(" sm\n\n");
         if (latestOpt.isPresent()) {
             WeightLog latest = latestOpt.get();
-            sb.append("Текущий вес: ").append(latest.getWeightKg()).append(" кг")
-                    .append(" (на ").append(latest.getLoggedAt().format(DATE_FMT)).append(")\n");
-            sb.append("Процент жира: ").append(formatOrUnknown(latest.getBodyFatPercent())).append("\n");
-            sb.append("Вес мышц: ").append(formatWeightOrUnknown(latest.getMuscleWeight())).append("\n");
+            sb.append("Current weight: ").append(latest.getWeightKg()).append(" kg")
+                    .append(" (as of ").append(latest.getLoggedAt().format(DATE_FMT)).append(")\n");
+            sb.append("Body fat %: ").append(formatOrUnknown(latest.getBodyFatPercent())).append("\n");
+            sb.append("Muscle weight: ").append(formatWeightOrUnknown(latest.getMuscleWeight())).append("\n");
 
             if (firstOpt.isPresent() && !firstOpt.get().getId().equals(latest.getId())) {
                 double diff = latest.getWeightKg() - firstOpt.get().getWeightKg();
                 String arrow = diff < 0 ? "↓" : (diff > 0 ? "↑" : "→");
-                sb.append(String.format("Прогресс с %s: %s %.1f кг%n",
+                sb.append(String.format("Progress since %s: %s %.1f kg%n",
                         firstOpt.get().getLoggedAt().format(DATE_FMT), arrow, Math.abs(diff)));
             }
             sb.append("\n");
         }
-
-        sb.append("Цель: ").append(goalLabel(profile.getGoalType())).append("\n");
-        sb.append("Активность: ").append(activityLabel(profile.getActivityLevel())).append("\n");
+        sb.append("Goal: ").append(goalLabel(profile.getGoalType())).append("\n");
+        sb.append("Activity: ").append(activityLabel(profile.getActivityLevel())).append("\n");
         if (profile.getTargetWeightKg() != null) {
-            sb.append("Желаемый вес: ").append(profile.getTargetWeightKg()).append(" кг\n");
+            sb.append("Target weight: ").append(profile.getTargetWeightKg()).append(" kg\n");
         }
-        sb.append("\nДневная цель по калориям: ").append(user.getDailyCalorieGoal()).append(" ккал");
-
+        sb.append("\nDaily calorie goal: ").append(user.getDailyCalorieGoal()).append(" kcal");
         return sb.toString();
     }
 
     private String formatOrUnknown(Double value) {
-        return value != null ? value + "%" : "не указано";
+        return value != null ? value + "%" : "not set";
     }
 
     private String formatWeightOrUnknown(Double value) {
-        return value != null ? value + " кг" : "не указано";
+        return value != null ? value + " kg" : "not set";
     }
 
-    private String genderLabel(com.github.anyuoyuna.lifeassistant.entity.enums.Gender g) {
-        return g.name().equals("MALE") ? "мужской" : "женский";
+    private String genderLabel(Gender g) {
+        return g.name().equals("MALE") ? "male" : "female";
     }
 
-    private String goalLabel(com.github.anyuoyuna.lifeassistant.entity.enums.GoalType g) {
+    private String goalLabel(GoalType g) {
         return switch (g) {
-            case LOSE_WEIGHT_KEEP_MUSCLE -> "похудение с сохранением мышц";
-            case LOSE_WEIGHT -> "похудение";
-            case MAINTAIN -> "поддержание веса";
-            case GAIN_MUSCLE -> "набор массы";
+            case LOSE_WEIGHT_KEEP_MUSCLE -> "lose weight keep muscle";
+            case LOSE_WEIGHT -> "lose weight";
+            case MAINTAIN -> "maintain";
+            case GAIN_MUSCLE -> "gain muscle";
         };
     }
 
-    private String activityLabel(com.github.anyuoyuna.lifeassistant.entity.enums.ActivityLevel a) {
+    private String activityLabel(ActivityLevel a) {
         return switch (a) {
-            case SEDENTARY -> "сидячий";
-            case LIGHT -> "лёгкий";
-            case MODERATE -> "умеренный";
-            case ACTIVE -> "высокий";
-            case VERY_ACTIVE -> "очень высокий";
+            case SEDENTARY -> "sedentary";
+            case LIGHT -> "light";
+            case MODERATE -> "moderate";
+            case ACTIVE -> "active";
+            case VERY_ACTIVE -> "very_active";
         };
     }
 }

@@ -23,7 +23,7 @@ public class FinanceMessageHandler {
             Expense expense = financeService.recordExpenseFromText(user, text);
             return formatResponse(expense);
         } catch (Exception e) {
-            return BotResponse.plain("Не смогла распознать трату в тексте.");
+            return BotResponse.plain("Could not detect any expenditure in the text.");
         }
     }
 
@@ -32,12 +32,12 @@ public class FinanceMessageHandler {
             Expense expense = financeService.recordExpenseFromImage(user, image);
             return formatResponse(expense);
         } catch (Exception e) {
-            return BotResponse.plain("Не удалось прочитать чек на фото.");
+            return BotResponse.plain("Failed to read the receipt from the photo.");
         }
     }
 
     private BotResponse formatResponse(Expense e) {
-        return BotResponse.plain(String.format("✅ Записано: %s — %.2f бат (%s)",
+        return BotResponse.plain(String.format("✅ Logged: %s — %.2f thb (%s)",
                 e.getCategory(), e.getAmount(), e.getDescription()));
     }
 }

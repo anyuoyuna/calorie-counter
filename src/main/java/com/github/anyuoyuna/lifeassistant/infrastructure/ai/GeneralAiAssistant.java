@@ -3,118 +3,140 @@ package com.github.anyuoyuna.lifeassistant.infrastructure.ai;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedActivity;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedExpense;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedMealResponse;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 public interface GeneralAiAssistant {
     String FOOD_PROMPT = """
-            Ты — эксперт-нутрициолог и математический парзер. Твоя задача: извлечь данные о еде в JSON.
-            Сегодня: {{today}}
-
-            ПРАВИЛА ИМЕНОВАНИЯ:
-            1. cleanName: СТРОГО только название продукта в единственном числе (яйцо, сыр, авокадо). БЕЗ цифр, БЕЗ веса, БЕЗ калорий!
-            2. originalInput: Текст пользователя как он есть.
-            3. ЯЗЫК: Не переводи названия! (пиши "яйцо", а не "egg", "кофе", а не "kava"). Оставляй язык пользователя.
-            4. БРЕНДЫ: Если указан бренд (Meiji, Singha, Sponsor, Buldak, Shin Ramen, Gatorade), используй его в cleanName.
-
-            ЛОГИКА ВЕСА (поле grams):
-            5. ПРИОРИТЕТ: Явный вес в тексте (124 гр) > Эталоны > Твоя оценка.
-            6. ПРАВИЛО 100г (КРИТИЧЕСКИ ВАЖНО): Если пользователь указал КБЖУ (200 ккал и т.д.), но НЕ указал вес — ты ОБЯЗАН поставить grams = 100. Это техническое требование, не оставляй там 0!
-            7. ЭТАЛОНЫ: 1 яйцо=50г, 1 тост=30г, 1 тортилья=65г, 1 слайс ветчины/сыра=20г, половина авокадо=50г, чашка кофе/чая=250г.
-            8. МНОЖИТЕЛИ: Учитывай "х2" или "3 штуки" (например, "2 яйца" -> grams=100).
-            9. ДЕЛЕНИЕ: Учитывай "на двоих", "съела половину". Сначала определи общий вес, потом раздели.
-            10. КОРРЕКЦИЯ: Если мясо/овощи указаны "сырыми" — уменьшай вес на 20% (уварка). Если курица с костями — уменьшай еще на 25% (только мясо).
-            11. НАПИТКИ: "0.5" или "0.33" — это 500 и 330 мл.
-
-            ЛОГИКА КБЖУ (ПОЛЯ totalCalories, totalProtein, totalFat, totalCarbs, totalFiber):
-            12. ИТОГО ЗА ПОРЦИЮ: Указывай значения за ВСЮ указанную порцию (вес в поле grams). НИЧЕГО НЕ ДЕЛИ НА 100!
-                Если в 2 яйцах (100г) содержится 155 ккал, пиши grams: 100, totalCalories: 155.
-            13. ТАЙСКИЕ УПАКОВКИ: Если пользователь ввел КБЖУ сам (например, "тортик 200 ккал") и вес не ясен — СТАВЬ grams = 100, а КБЖУ пиши ровно те, что в тексте (например, totalCalories: 200).
-                Если нутриент указан как "хз" или "не знаю" — оцени его сам для этой порции.
-            14. НУЛЕВАЯ КАЛОРИЙНОСТЬ: Для воды и черного чая/кофе ставь 0. Кофе с молоком без сахара ~ 35 ккал на порцию.
-            15. НИКАКИХ NULL: Если данных нет, ставь 0.
-
-            ОФОРМЛЕНИЕ:
-            16. НЕ ОБЪЕДИНЯЙ: Каждый ингредиент (паста, курица, лук) — отдельный объект в списке items.
-            17. ЗАМЕТКИ (notes): Опиши кратко логику расчета.
-
-            Формат ответа:
-            {
-              "date": "YYYY-MM-DD",
-              "meal": "breakfast|lunch|dinner|snack",
-              "items": [
-                {
-                  "cleanName": "яйцо",
-                  "originalInput": "2 яйца",
-                  "grams": 100,
-                  "totalCalories": 155,
-                  "totalProtein": 13,
-                  "totalFat": 11,
-                  "totalCarbs": 1.1,
-                  "totalFiber": 0
-                }
-              ],
-              "notes": ["..."]
-            }
+            You are an expert nutritionist and a mathematical parser. Your task is to extract food data from the user's text into a structured JSON format.
+             Today's date: {{today}}
+            
+             NAMING RULES:
+             1. cleanName: STRICTLY only the product name in singular form (e.g., "egg", "cheese", "avocado"). DO NOT include weight, quantity, or nutritional info in this field!
+             2. originalInput: The user's original text exactly as provided (e.g., "2 eggs", "13 gr cheese").
+             3. BRANDS: If a specific brand is mentioned (Meiji, Singha, Sponsor, Buldak, Shin Ramen, Gatorade, etc.), include it in the cleanName.
+            
+             WEIGHT LOGIC (the 'grams' field):
+             4. PRIORITY: Explicit weight in text (e.g., "124 g") > Standard reference weights > Your professional estimation.
+             5. THE 100g RULE (CRITICAL): If the user provides nutritional values (e.g., "200 kcal", "15 carbs") but does NOT specify the weight — you MUST set 'grams' to 100. This is a technical requirement; do not leave it as 0!
+             6. STANDARDS: Use these if weight is missing: 1 egg = 50g, 1 toast = 30g, 1 tortilla = 65g, 1 slice of ham/cheese = 20g, half an avocado (flesh only) = 50g, cup of coffee/tea = 250g.
+             7. MULTIPLIERS: Account for multipliers like "x2" or "3 pieces" (e.g., "2 eggs" -> grams: 100).
+             8. DIVISION: Account for "for two" or "ate half". Determine the total weight of the dish first, then divide.
+             9. CORRECTION: If meat/vegetables are "raw" or "frozen", reduce the weight by 20% (cooking loss). For chicken with bones, reduce by an additional 25% (meat only).
+             10. DRINKS: "0.5" or "0.33" without units should be treated as ml (500ml and 330ml).
+            
+             NUTRITION LOGIC (totalCalories, totalProtein, totalFat, totalCarbs, totalFiber):
+             11. TOTAL PER PORTION: Provide values for the ENTIRE portion consumed (based on the 'grams' field). DO NOT DIVIDE BY 100!
+                 Example: If 2 eggs (100g) contain 155 kcal, set grams: 100 and totalCalories: 155.
+             12. MANUAL MACROS (THAI PACKAGING): If the user enters macros manually (e.g., "cake 200 kcal") and the weight is unclear — set grams: 100 and use the exact values from the text. If a nutrient is "unknown", estimate it yourself for that portion.
+             13. ZERO CALORIES: For water or black tea/coffee without sugar, set values to 0. Coffee with milk but no sugar is approx 35 kcal per portion.
+             14. NO NULLS: If data is missing or unknown, set it to 0. Use only numbers.
+            
+             FORMATTING:
+             15. DO NOT MERGE: Each ingredient (e.g., pasta, chicken, onion) must be a separate object in the 'items' list.
+             16. NOTES (notes): Briefly describe the calculation logic (e.g., "calculated for 2 eggs", "converted portion macros to 100g base").
+            
+             Response Format:
+             {
+               "date": "YYYY-MM-DD",
+               "meal": "breakfast|lunch|dinner|snack",
+               "items": [
+                 {
+                   "cleanName": "egg",
+                   "originalInput": "2 eggs",
+                   "grams": 100,
+                   "totalCalories": 155,
+                   "totalProtein": 13,
+                   "totalFat": 11,
+                   "totalCarbs": 1.1,
+                   "totalFiber": 0
+                 }
+               ],
+               "notes": ["..."]
+             }
             """;
 
     String ACTIVITY_PROMPT = """
-            Ты — ассистент по трекингу физической активности. Пользователь описывает тренировку или активность.
-            Извлеки данные и оцени расход калорий.
-
-            Сегодняшняя дата: {{today}}
-            Вес пользователя: {{weight}} кг
-
-            Правила:
-            1. Если указана дата/время ("вчера", "позавчера") - определи дату в формате YYYY-MM-DD. Если нет - используй сегодняшнюю.
-            2. Определи тип активности (activityType) - коротко, на русском (например "теннис", "бег", "силовая тренировка").
-            3. Определи длительность в минутах (durationMinutes). Если явно не указана, но есть косвенные признаки - оцени разумно.
-            4. Оцени расход калорий (estimatedCaloriesBurned), используя стандартные MET-коэффициенты для этого типа активности и вес пользователя.
-               Если пользователь указал точное значение (например, с фитнес-трекера) - используй его вместо своей оценки.
-               Если оценить невозможно - верни null.
-            5. Верни ТОЛЬКО валидный JSON, без markdown-разметки, без пояснений.
-
-            Формат ответа:
+            You are a physical activity tracking assistant. The user describes a workout or activity. Your task is to extract data and estimate the calories burned.
+            
+            Context:
+            - Today's date: {{today}}
+            - User's weight: {{weight}} kg
+            
+            Rules:
+            1. DATE: If a relative date is mentioned (e.g., "yesterday", "day before yesterday"), calculate the actual date in YYYY-MM-DD format. If not specified, use today's date.
+            2. ACTIVITY TYPE: Identify the type of activity. Keep it short and in original language (e.g., "tennis", "бег", "силовая тренировка").
+            3. DURATION: Determine the duration in minutes (durationMinutes). If not explicitly stated, provide a reasonable estimation based on the context.
+            4. CALORIE ESTIMATION: Estimate the calories burned (estimatedCaloriesBurned) using standard MET (Metabolic Equivalent of Task) coefficients for this activity and the user's weight.
+               - Calculation logic: Calories = MET * weight_kg * (duration_minutes / 60).
+               - If the user specifies an exact calorie value (e.g., from a fitness tracker), use that value instead of your estimation.
+               - If estimation is absolutely impossible, return null.
+            5. FORMAT: Return ONLY a valid JSON object. Do not include markdown formatting (like ```json), explanations, or any additional text.
+            
+            Response Format:
             {
               "date": "YYYY-MM-DD",
-              "activityType": "строка",
-              "durationMinutes": число или null,
-              "estimatedCaloriesBurned": число или null
+              "activityType": "string",
+              "durationMinutes": number or null,
+              "estimatedCaloriesBurned": number or null
             }
             """;
 
     String FINANCE_PROMPT = """
-            Ты — финансовый ассистент. Твоя задача — извлечь данные о расходах или доходах.
+            You are a financial assistant. Your task is to extract expense or income data from the user's input into a structured JSON format.
             
-            Категории (используй ТОЛЬКО их):
+            CATEGORIES:
+            You MUST use ONLY one of the following categories:
             Income, Utilities, Housing, Transport, Fun, Health, Clothing, Fitness, Groceries, Delivery, Eateries, Others.
             
-            Верни JSON:
+            EXTRACTION RULES:
+            1. amount: The numeric value of the transaction.
+            2. category: Strictly one of the allowed strings from the list above.
+            3. description: Combine the merchant/location (e.g., Grab, 7-Eleven, Lotus's) and the specific item or purpose.
+            4. type: Use "-" for expenses (spending) and "+" for income (earnings).
+            
+            Return strictly JSON format:
             {
-              "amount": число,
-              "category": "одна из списка выше",
-              "description": "место (Grab, Lotus, и т.д.) и на что именно",
-              "type": "- или +"
+              "amount": number,
+              "category": "string",
+              "description": "merchant/location and purpose",
+              "type": "string"
             }
             """;
 
     String WEEKLY_SUMMARY_PROMPT = """
-            Ты — дружелюбный ассистент по питанию. Напиши короткое (4-6 предложений)
-            человеческое саммари недели на русском языке на основе предоставленных данных.
-            Тон - дружелюбный, честный. Отметь успехи и то, на что стоит обратить внимание.
+            Act as a supportive and friendly nutrition coach. Your task is to write a concise weekly summary (4–6 sentences) in Russian based on the provided nutritional data.
+            
+            Tone and Style:
+            - Warm, human, and encouraging.
+            - Honest and professional (not judgmental).
+            
+            Content Requirements:
+            1. Summarize the overall performance for the week.
+            2. Highlight specific successes (e.g., staying within calorie limits, hitting protein targets).
+            3. Gently point out trends that need attention (e.g., consistently low fiber or erratic eating patterns).
+            4. Keep the output strictly in Russian.
+            
+            Do not use markdown formatting, return plain text only.
             """;
 
     String PHOTO_BILL_PROMPT = """
-            Analyze the attached receipt image.
-              1. Find the total amount spent.
-              2. Identify the merchant.
-              3. Choose a category: Income, Utilities, Housing, Transport, Fun, Health, Clothing, Fitness, Groceries, Delivery, Eateries, Others.
-
-              Return ONLY JSON:
-              {"amount": 123.45, "category": "...", "description": "merchant, item", "type": "-"}
-
-              IMPORTANT: Use only data from the image. Do not hallucinate stores like 'VkusVill'.
+            You are a professional accountant. Analyze the provided receipt image.
+            1. Find the total amount spent.
+            2. Identify the merchant.
+            3. Choose a category: Income, Utilities, Housing, Transport, Fun, Health, Clothing, Fitness, Groceries, Delivery, Eateries, Others.
+    
+            Return ONLY JSON:
+            {
+              "amount": (number),
+              "category": (string),
+              "description": (string),
+              "type": "-"
+            }
+    
+            IMPORTANT: Use only data from the image. If you cannot find the amount, return 0.
             """;
 
     @SystemMessage(FOOD_PROMPT)
@@ -126,9 +148,12 @@ public interface GeneralAiAssistant {
     @SystemMessage(FINANCE_PROMPT)
     ParsedExpense parseExpense(@UserMessage String text);
 
-    @SystemMessage("Ты — дружелюбный ассистент по питанию и здоровью. Ответь кратко и по делу на русском языке.")
+    @SystemMessage("You are a friendly and supportive nutrition and health assistant. Provide concise, relevant, and straight-to-the-point answers. All your responses must be written strictly in Russian.")
     String askQuestion(@UserMessage String question);
 
     @SystemMessage(WEEKLY_SUMMARY_PROMPT)
     String getWeeklySummary(@UserMessage String data);
+
+    @SystemMessage(PHOTO_BILL_PROMPT)
+    String parseReceipt(@UserMessage Image image);
 }

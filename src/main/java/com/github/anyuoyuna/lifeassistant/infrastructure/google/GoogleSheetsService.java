@@ -29,15 +29,12 @@ public class GoogleSheetsService {
     public GoogleSheetsService(@Value("${google.sheets.id}") String spreadsheetId,
                                @Value("${google.credentials.path}") String credentialsPath) throws Exception {
         this.spreadsheetId = spreadsheetId;
-
         InputStream in = getClass().getResourceAsStream("/google-credentials.json");
         if (in == null) {
-            throw new RuntimeException("Файл google-credentials.json не найден в resources!");
+            throw new RuntimeException("File google-credentials.json not found in resources!");
         }
-
         GoogleCredentials credentials = GoogleCredentials.fromStream(in)
                 .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
-
         this.sheetsService = new Sheets.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),
                 GsonFactory.getDefaultInstance(),
@@ -46,23 +43,14 @@ public class GoogleSheetsService {
                 .build();
     }
 
-    /**
-     * Метод для добавления строки в таблицу
-     * @param sheetName Название листа (например "Операции")
-     * @param row Данные строки в виде списка объектов
-     */
     public void appendRow(String sheetName, List<Object> row) {
         try {
             ValueRange body = new ValueRange().setValues(Collections.singletonList(row));
-
             sheetsService.spreadsheets().values()
                     .append(spreadsheetId, sheetName + "!A1", body)
                     .setValueInputOption("USER_ENTERED")
                     .execute();
-
-            log.info("Строка успешно добавлена в Google Sheets: {}", row);
         } catch (IOException e) {
-            log.error("Ошибка при записи в Google Sheets", e);
             throw new RuntimeException("Не удалось записать данные в таблицу", e);
         }
     }
@@ -74,7 +62,7 @@ public class GoogleSheetsService {
                     .execute();
             return response.getValues();
         } catch (IOException e) {
-            log.error("Ошибка при чтении из Google Sheets", e);
+            log.error("Failed to read from Google Sheets", e);
             return Collections.emptyList();
         }
     }
@@ -84,10 +72,8 @@ public class GoogleSheetsService {
             ValueRange response = sheetsService.spreadsheets().values()
                     .get(spreadsheetId, sheetName + "!G:G")
                     .execute();
-
             List<List<Object>> values = response.getValues();
             if (values == null) return;
-
             int rowIndex = -1;
             for (int i = 0; i < values.size(); i++) {
                 if (!values.get(i).isEmpty() && values.get(i).get(0).toString().equals(uuid)) {
@@ -95,7 +81,6 @@ public class GoogleSheetsService {
                     break;
                 }
             }
-
             if (rowIndex != -1) {
                 DeleteDimensionRequest deleteRequest = new DeleteDimensionRequest()
                         .setRange(new DimensionRange()
@@ -103,13 +88,12 @@ public class GoogleSheetsService {
                                 .setDimension("ROWS")
                                 .setStartIndex(rowIndex)
                                 .setEndIndex(rowIndex + 1));
-
                 sheetsService.spreadsheets().batchUpdate(spreadsheetId,
                                 new BatchUpdateSpreadsheetRequest().setRequests(List.of(new Request().setDeleteDimension(deleteRequest))))
                         .execute();
             }
         } catch (IOException e) {
-            log.error("Ошибка удаления строки из Google: {}", e.getMessage());
+            log.error("Error deleting row from Google Sheets: {}", e.getMessage());
         }
     }
 }

@@ -45,47 +45,41 @@ public class ProfileEditHandler {
         return activeSessions.containsKey(telegramId);
     }
 
-    // Меню редактирования, показывается под /profile
     public SendMessage editMenu(Long chatId) {
-        return withButtons(chatId, "Что хочешь изменить?", List.of(
-                button("Вес / жир / мышцы", "EDIT_MENU_WEIGHT"),
-                button("Цель", "EDIT_MENU_GOAL"),
-                button("Активность", "EDIT_MENU_ACTIVITY"),
-                button("Желаемый вес", "EDIT_MENU_TARGET_WEIGHT")
+        return withButtons(chatId, "What would you like to change?", List.of(
+                button("Weight / fat / muscle", "EDIT_MENU_WEIGHT"),
+                button("Goal", "EDIT_MENU_GOAL"),
+                button("Activity", "EDIT_MENU_ACTIVITY"),
+                button("Target weight", "EDIT_MENU_TARGET_WEIGHT")
         ));
     }
 
-    // Роутер для нажатий кнопок и текстовых ответов
     public SendMessage handle(Long telegramId, Long chatId, String text, String callbackData) {
         String value = callbackData != null ? callbackData : text;
-
-        // Точки входа из меню
         if ("EDIT_MENU_WEIGHT".equals(value)) {
             activeSessions.put(telegramId, sessionWithStep(EditStep.EDIT_WEIGHT));
-            return simple(chatId, "Текущий вес в кг?");
+            return simple(chatId, "Current weight (kg)?");
         }
         if ("EDIT_MENU_GOAL".equals(value)) {
-            return withButtons(chatId, "Новая цель?", List.of(
-                    button("Похудение, сохраняя мышцы", "GOAL_LOSE_WEIGHT_KEEP_MUSCLE"),
-                    button("Похудение", "GOAL_LOSE_WEIGHT"),
-                    button("Поддержание веса", "GOAL_MAINTAIN"),
-                    button("Набор массы", "GOAL_GAIN_MUSCLE")
+            return withButtons(chatId, "New goal?", List.of(
+                    button("Lose weight keep muscle", "GOAL_LOSE_WEIGHT_KEEP_MUSCLE"),
+                    button("Lose weight", "GOAL_LOSE_WEIGHT"),
+                    button("Maintain", "GOAL_MAINTAIN"),
+                    button("Gain muscle", "GOAL_GAIN_MUSCLE")
             ));
         }
         if ("EDIT_MENU_ACTIVITY".equals(value)) {
-            return withButtons(chatId, "Новый уровень активности?", List.of(
-                    button("Сидячий", "ACT_SEDENTARY"),
-                    button("Лёгкий", "ACT_LIGHT"),
-                    button("Умеренный", "ACT_MODERATE"),
-                    button("Высокий", "ACT_ACTIVE")
+            return withButtons(chatId, "New activity level", List.of(
+                    button("Sedentary", "ACT_SEDENTARY"),
+                    button("Light", "ACT_LIGHT"),
+                    button("Moderate", "ACT_MODERATE"),
+                    button("Active", "ACT_ACTIVE")
             ));
         }
         if ("EDIT_MENU_TARGET_WEIGHT".equals(value)) {
             activeSessions.put(telegramId, sessionWithStep(EditStep.EDIT_TARGET_WEIGHT));
-            return simple(chatId, "Желаемый вес в кг?");
+            return simple(chatId, "Target weight (kg)?");
         }
-
-        // Однократные изменения (цель / активность) - применяются сразу, без сессии
         if (value.startsWith("GOAL_")) {
             GoalType goal = GoalType.valueOf(value.substring("GOAL_".length()));
             return applyGoalChange(telegramId, chatId, goal);
@@ -94,40 +88,37 @@ public class ProfileEditHandler {
             ActivityLevel activity = mapActivityCode(value);
             return applyActivityChange(telegramId, chatId, activity);
         }
-
-        // Многошаговые флоу (вес -> жир -> мышцы)
         EditSession session = activeSessions.get(telegramId);
-        if (session == null) return simple(chatId, "Нет активного редактирования, начни через /profile");
-
+        if (session == null) return simple(chatId, "No active editing session. Start via /profile");
         return switch (session.getStep()) {
             case EDIT_WEIGHT -> {
                 Double weight = parseDoubleInRange(value, 30, 300);
-                if (weight == null) yield simple(chatId, "Вес должен быть числом от 30 до 300 кг");
+                if (weight == null) yield simple(chatId, "Weight must be a number between 30 and 300 kg");
                 session.setPendingWeight(weight);
                 session.setStep(EditStep.EDIT_BODY_FAT);
-                yield withButtons(chatId, "Процент жира (если знаешь)?", List.of(button("Не знаю", "UNKNOWN")));
+                yield withButtons(chatId, "Body fat percentage (if you know it)?", List.of(button("I don't know", "UNKNOWN")));
             }
             case EDIT_BODY_FAT -> {
                 if (!"UNKNOWN".equals(value)) {
                     Double fat = parseDoubleInRange(value, 3, 60);
-                    if (fat == null) yield simple(chatId, "Введи число от 3 до 60, или нажми \"Не знаю\"");
+                    if (fat == null) yield simple(chatId, "Enter a number between 3 and 60, or tap \"I don't know\"");
                     session.setPendingBodyFat(fat);
                 }
                 session.setStep(EditStep.EDIT_MUSCLE);
-                yield withButtons(chatId, "Вес мышц (если знаешь)?", List.of(button("Не знаю", "UNKNOWN")));
+                yield withButtons(chatId, "Muscle mass (if you know it)?", List.of(button("I don't know", "UNKNOWN")));
             }
             case EDIT_MUSCLE -> {
                 Double muscle = "UNKNOWN".equals(value) ? null : parseDoubleInRange(value, 10, 70);
                 if (!"UNKNOWN".equals(value) && muscle == null)
-                    yield simple(chatId, "Введи число от 10 до 70, или нажми \"Не знаю\"");
+                    yield simple(chatId, "Enter a number between 10 and 70, or tap \"I don't know\"");
                 yield applyWeightUpdate(telegramId, chatId, session.getPendingWeight(), session.getPendingBodyFat(), muscle);
             }
             case EDIT_TARGET_WEIGHT -> {
                 Double target = parseDoubleInRange(value, 30, 300);
-                if (target == null) yield simple(chatId, "Введи число от 30 до 300 кг");
+                if (target == null) yield simple(chatId, "Enter a number between 30 and 300 kg");
                 yield applyTargetWeightChange(telegramId, chatId, target);
             }
-            case NONE -> simple(chatId, "Нет активного редактирования, начни через /profile");
+            case NONE -> simple(chatId, "No active editing session. Start via /profile");
         };
     }
 
@@ -135,15 +126,13 @@ public class ProfileEditHandler {
     protected SendMessage applyWeightUpdate(Long telegramId, Long chatId, Double weight, Double bodyFat, Double muscle) {
         User user = userRepo.findByTelegramId(telegramId).orElseThrow();
         UserProfile profile = profileRepo.findById(user.getId()).orElseThrow();
-
-        WeightLog weightLog = new WeightLog(); // переименовано log -> weightLog
+        WeightLog weightLog = new WeightLog();
         weightLog.setUser(user);
         weightLog.setLoggedAt(LocalDate.now());
         weightLog.setWeightKg(weight);
         weightLog.setBodyFatPercent(bodyFat);
         weightLog.setMuscleWeight(muscle);
         weightLogRepo.save(weightLog);
-
         CalorieCalculationService.NutritionTargets targets = calorieService.calculateTargets(profile, weight);
         user.setDailyCalorieGoal(targets.calories());
         user.setDailyProteinGoal(targets.protein());
@@ -151,11 +140,9 @@ public class ProfileEditHandler {
         user.setDailyCarbsGoal(targets.carbs());
         user.setDailyFiberGoal(targets.fiber());
         userRepo.save(user);
-
         activeSessions.remove(telegramId);
-        log.info("Обновлён вес пользователя {}: {} кг, новая цель {} ккал", telegramId, weight, targets.calories()); // теперь log - это логгер
-
-        return simple(chatId, "Обновила! Новая дневная цель: " + targets.calories() + " ккал");
+        log.info("Updated weight for user {}: {} kg, new target {} kcal", telegramId, weight, targets.calories()); // теперь log - это логгер
+        return simple(chatId, "Updated! New daily target: " + targets.calories() + " kcal");
     }
 
     @Transactional
@@ -164,7 +151,6 @@ public class ProfileEditHandler {
         UserProfile profile = profileRepo.findById(user.getId()).orElseThrow();
         profile.setGoalType(goal);
         profileRepo.save(profile);
-
         Double latestWeight = weightLogRepo.findFirstByUserOrderByLoggedAtDesc(user)
                 .map(WeightLog::getWeightKg).orElse(null);
         if (latestWeight != null) {
@@ -175,9 +161,9 @@ public class ProfileEditHandler {
             user.setDailyCarbsGoal(targets.carbs());
             user.setDailyFiberGoal(targets.fiber());
             userRepo.save(user);
-            return simple(chatId, "Цель обновлена! Новая дневная норма: " + targets.calories() + " ккал");
+            return simple(chatId, "Goal updated! New daily target: " + targets.calories() + " kcal");
         }
-        return simple(chatId, "Цель обновлена!");
+        return simple(chatId, "Goal updated!");
     }
 
     @Transactional
@@ -186,7 +172,6 @@ public class ProfileEditHandler {
         UserProfile profile = profileRepo.findById(user.getId()).orElseThrow();
         profile.setActivityLevel(activity);
         profileRepo.save(profile);
-
         Double latestWeight = weightLogRepo.findFirstByUserOrderByLoggedAtDesc(user)
                 .map(WeightLog::getWeightKg).orElse(null);
         if (latestWeight != null) {
@@ -197,9 +182,9 @@ public class ProfileEditHandler {
             user.setDailyCarbsGoal(targets.carbs());
             user.setDailyFiberGoal(targets.fiber());
             userRepo.save(user);
-            return simple(chatId, "Активность обновлена! Новая дневная норма: " + targets.calories() + " ккал");
+            return simple(chatId, "Activity updated! New daily target: " + targets.calories() + " kcal");
         }
-        return simple(chatId, "Активность обновлена!");
+        return simple(chatId, "Activity updated!");
     }
 
     @Transactional
@@ -208,9 +193,8 @@ public class ProfileEditHandler {
         UserProfile profile = profileRepo.findById(user.getId()).orElseThrow();
         profile.setTargetWeightKg(target);
         profileRepo.save(profile);
-
         activeSessions.remove(telegramId);
-        return simple(chatId, "Желаемый вес обновлён: " + target + " кг");
+        return simple(chatId, "Target weight updated: " + target + " kg");
     }
 
     private ActivityLevel mapActivityCode(String value) {

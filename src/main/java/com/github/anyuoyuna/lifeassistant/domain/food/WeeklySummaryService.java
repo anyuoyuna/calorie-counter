@@ -30,10 +30,8 @@ public class WeeklySummaryService {
     public String buildWeeklySummary(User user) {
         LocalDate today = LocalDate.now(clock);
         LocalDate weekStart = today.minusDays(6);
-
         List<MealEntry> entries = mealEntryRepo.findByUserAndEatenAtBetween(
                 user, weekStart.atStartOfDay(), today.plusDays(1).atStartOfDay());
-
         Map<LocalDate, List<MealEntry>> byDay = new LinkedHashMap<>();
         for (LocalDate d = weekStart; !d.isAfter(today); d = d.plusDays(1)) {
             byDay.put(d, new ArrayList<>());
@@ -44,16 +42,13 @@ public class WeeklySummaryService {
                 byDay.get(day).add(e);
             }
         }
-
         StringBuilder dataBlock = new StringBuilder();
         for (Map.Entry<LocalDate, List<MealEntry>> dayEntry : byDay.entrySet()) {
             DaySummary summary = calculateDaySummary(dayEntry.getKey(), dayEntry.getValue());
             dataBlock.append(formatDayLine(summary, user)).append("\n");
         }
-
         String response = aiAssistant.getWeeklySummary(dataBlock.toString());
-
-        return (response != null) ? response.trim() : "Не удалось сформировать отчет.";
+        return (response != null) ? response.trim() : "Failed to generate report.";
     }
 
     public record DaySummary(LocalDate date, double calories, double protein, double fat, double carbs, double fiber) {}
@@ -75,7 +70,7 @@ public class WeeklySummaryService {
 
     private String formatDayLine(DaySummary s, User user) {
         return String.format(
-                "%s: факт %.0f/%d ккал, Б%.0f/%.0f г, Ж%.0f/%.0f г, У%.0f/%.0f г",
+                "%s: fact %.0f/%d kcal, P%.0f/%.0f g, F%.0f/%.0f g, C%.0f/%.0f g",
                 s.date().format(DATE_FMT),
                 s.calories(), user.getDailyCalorieGoal(),
                 s.protein(), user.getDailyProteinGoal(),

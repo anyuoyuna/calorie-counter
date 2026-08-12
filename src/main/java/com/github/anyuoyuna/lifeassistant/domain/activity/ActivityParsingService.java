@@ -31,7 +31,6 @@ public class ActivityParsingService {
         double weightKg = weightLogRepo.findFirstByUserOrderByLoggedAtDesc(user)
                 .map(WeightLog::getWeightKg)
                 .orElse(70.0);
-
         String today = LocalDate.now(clock).toString();
 
         return aiAssistant.parseActivity(userText, weightKg, today);

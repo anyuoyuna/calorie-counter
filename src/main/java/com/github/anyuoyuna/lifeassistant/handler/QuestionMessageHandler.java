@@ -15,7 +15,7 @@ public class QuestionMessageHandler {
         String answer = aiAssistant.askQuestion(text);
 
         if (answer == null || answer.isBlank()) {
-            return BotResponse.plain("Не удалось получить ответ, попробуй ещё раз.");
+            return BotResponse.plain("Couldn't get a response, please try again.");
         }
         return BotResponse.plain(answer.trim());
     }

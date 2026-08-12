@@ -21,30 +21,24 @@ public class GrabMailPoller {
     @Scheduled(fixedRate = 600000)
     public void pollEmails() {
         try {
-            log.info("Проверка почты на наличие чеков Grab...");
             List<Message> messages = gmailService.fetchNewGrabReceipts();
-
             if (messages.isEmpty()) {
-                log.info("Новых чеков не найдено.");
                 return;
             }
-
             Long adminUserId = 1L;
-
             for (Message msg : messages) {
                 GrabReceiptEvent event = new GrabReceiptEvent(adminUserId, msg.getId(), "Grab receipt found");
                 kafkaTemplate.send("raw-receipts", event);
-                log.info("Чек {} отправлен в Kafka на обработку", msg.getId());
-
+                log.info("Receipt {} sent to Kafka for processing", msg.getId());
                 deleteMessage(msg.getId());
             }
         } catch (Exception e) {
-            log.error("Ошибка при опросе почты: ", e);
+            log.error("Error polling email: ", e);
         }
     }
 
     private void deleteMessage(String messageId) throws Exception {
         gmailService.getGmailClient().users().messages().trash("me", messageId).execute();
-        log.info("Письмо {} перемещено в корзину", messageId);
+        log.info("Email {} moved to trash", messageId);
     }
 }

@@ -71,16 +71,15 @@ public class DailyReportService {
     public String buildMealReport(String itemNames, Macros meal, User user, LocalDate date) {
         Macros day = dayTotals(user, date);
         Macros remaining = remaining(user, date, day);
-        String dateLabel = date.equals(LocalDate.now(clock)) ? "Сегодня" : "На " + date;
-
+        String dateLabel = date.equals(LocalDate.now(clock)) ? "Today" : "As of " + date;
         StringBuilder sb = new StringBuilder();
-        sb.append("Записала: ").append(itemNames).append("\n\n");
+        sb.append("Recorded: ").append(itemNames).append("\n\n");
         sb.append("<pre>");
-        sb.append(row("", "Ккал", "Б", "Ж", "У", "Клетч")).append("\n");
+        sb.append(row("", "Kcal", "P", "F", "C", "F")).append("\n");
         sb.append("-".repeat(42)).append("\n");
-        sb.append(dataRow("Приём", meal)).append("\n");
+        sb.append(dataRow("Meal", meal)).append("\n");
         sb.append(dataRow(dateLabel, day)).append("\n");
-        sb.append(dataRow("Осталось", remaining));
+        sb.append(dataRow("Remain", remaining));
         sb.append("</pre>");
         return sb.toString();
     }
@@ -88,14 +87,13 @@ public class DailyReportService {
     public String buildDailySummary(User user, LocalDate date) {
         Macros day = dayTotals(user, date);
         Macros remaining = remaining(user, date, day);
-        String dateLabel = date.equals(LocalDate.now(clock)) ? "Сегодня" : "На " + date;
-
+        String dateLabel = date.equals(LocalDate.now(clock)) ? "Today" : "As of " + date;
         StringBuilder sb = new StringBuilder();
         sb.append("<pre>");
-        sb.append(row("", "Ккал", "Б", "Ж", "У", "Клетч")).append("\n");
+        sb.append(row("", "Kcal", "P", "F", "C", "F")).append("\n");
         sb.append("-".repeat(42)).append("\n");
         sb.append(dataRow(dateLabel, day)).append("\n");
-        sb.append(dataRow("Осталось", remaining));
+        sb.append(dataRow("Remain", remaining));
         sb.append("</pre>");
         return sb.toString();
     }

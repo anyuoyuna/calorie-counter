@@ -17,13 +17,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,9 +43,7 @@ public class FinanceService {
                           GoogleSheetsService googleSheetsService,
                           ExpenseRepository expenseRepository,
                           Clock clock,
-                          UserRepository userRepository,
-                          ObjectMapper objectMapper,
-                          @Qualifier("geminiModel") ChatLanguageModel geminiModel) {
+                          UserRepository userRepository, ObjectMapper objectMapper, ChatLanguageModel geminiModel) {
         this.aiAssistant = aiAssistant;
         this.googleSheetsService = googleSheetsService;
         this.expenseRepository = expenseRepository;
@@ -64,67 +62,61 @@ public class FinanceService {
     @Transactional
     public Expense recordExpenseFromImage(User user, Image image) {
         UserMessage message = UserMessage.from(
-                TextContent.from(GeneralAiAssistant.PHOTO_BILL_PROMPT),
-                ImageContent.from(image.base64Data(), image.mimeType())
+                ImageContent.from(image.base64Data(), image.mimeType()),
+                TextContent.from(GeneralAiAssistant.PHOTO_BILL_PROMPT)
         );
-
-        Response<AiMessage> response = geminiModel.generate(message);
-        String rawJson = response.content().text();
-
         try {
+            Response<AiMessage> response = geminiModel.generate(message);
+            String rawJson = response.content().text();
+            log.info("Gemini raw response: {}", rawJson);
+
             ParsedExpense parsed = objectMapper.readValue(stripMarkdownFences(rawJson), ParsedExpense.class);
             return saveParsedExpense(user, parsed);
         } catch (Exception e) {
-            log.error("Ошибка парсинга чека: {}", rawJson, e);
-            throw new RuntimeException("Не удалось распознать чек");
+            log.error("Failed to parse receipt", e);
+            throw new RuntimeException("AI blindness detected");
         }
     }
 
     @Transactional
     public int importHistoryFromSheets() {
-        List<List<Object>> rows = googleSheetsService.readRows("Операции", "A3:F");
+        List<List<Object>> rows = googleSheetsService.readRows("Operations", "A3:F");
         if (rows == null || rows.isEmpty()) return 0;
 
         int count = 0;
-
         List<User> allUsers = userRepository.findAll();
-
         for (List<Object> row : rows) {
             try {
                 if (row.size() < 5 || row.get(0) == null || row.get(0).toString().isBlank()) continue;
-
                 String dateStr = row.get(0).toString();
                 String whoStr = row.get(1).toString();
                 String categoryStr = row.get(2).toString();
                 String description = row.get(3).toString();
                 String amountStr = row.get(4).toString();
                 String type = row.size() > 5 ? row.get(5).toString() : "-";
-
                 User expenseOwner = allUsers.stream()
                         .filter(u -> whoStr.equalsIgnoreCase(u.getDisplayName()))
                         .findFirst()
                         .orElse(null);
 
                 if (expenseOwner == null) {
-                    log.warn("Пропуск строки: пользователь '{}' не найден в БД. Строка: {}", whoStr, row);
+                    log.warn("Skipping row: user '{}' not found in DB. Row: {}", whoStr, row);
                     continue;
                 }
-
                 Expense e = new Expense();
                 e.setUser(expenseOwner);
                 e.setDate(parseDate(dateStr));
-                e.setCategory(com.github.anyuoyuna.lifeassistant.entity.enums.ExpenseCategory.valueOf(categoryStr));
+                e.setCategory(ExpenseCategory.valueOf(categoryStr));
                 e.setDescription(description);
                 e.setAmount(new BigDecimal(amountStr.replace(",", ".").replaceAll("\\s", "")));
                 e.setType(type);
-
                 expenseRepository.save(e);
                 count++;
             } catch (Exception ex) {
-                log.warn("Ошибка импорта строки {}: {}", row, ex.getMessage());
+                log.warn("Row import error {}: {}", row, ex.getMessage());
             }
         }
-        log.info("Успешно импортировано {} записей из Google Sheets", count);
+        log.info("Successfully imported {} entries from Google Sheets", count);
         return count;
     }
 
@@ -132,16 +124,15 @@ public class FinanceService {
         try {
             return LocalDate.parse(dateStr);
         } catch (Exception e) {
-            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd.MM.yyyy");
             return LocalDate.parse(dateStr, dtf);
         }
     }
 
     private Expense saveParsedExpense(User user, ParsedExpense parsed) {
         if (parsed == null || parsed.amount() == null) {
-            throw new RuntimeException("Не удалось распознать сумму");
+            throw new RuntimeException("Failed to recognize amount");
         }
-
         Expense expense = new Expense();
         expense.setUser(user);
         expense.setDate(LocalDate.now(clock));
@@ -150,10 +141,8 @@ public class FinanceService {
         expense.setDescription(parsed.description());
         expense.setType((parsed.type() != null && parsed.type().contains("+")) ? "+" : "-");
         expense.setExternalId(UUID.randomUUID().toString());
-
         expenseRepository.save(expense);
-
-        googleSheetsService.appendRow("Операции", List.of(
+        googleSheetsService.appendRow("Operations", List.of(
                 expense.getDate().toString(),
                 user.getDisplayName(),
                 expense.getCategory().name(),
@@ -162,7 +151,6 @@ public class FinanceService {
                 expense.getType(),
                 expense.getExternalId()
         ));
-
         return expense;
     }
 
@@ -176,6 +164,6 @@ public class FinanceService {
 
     private String stripMarkdownFences(String text) {
         if (text == null) return null;
-        return text.replace("```json", "").replace("```", "").trim();
+        return text.replaceAll("```json", "").replaceAll("```", "").trim();
     }
 }

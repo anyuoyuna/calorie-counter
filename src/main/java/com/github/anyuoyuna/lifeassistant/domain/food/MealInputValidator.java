@@ -32,46 +32,45 @@ public class MealInputValidator {
                 rejectedItemNames.add(displayName(item));
             }
         }
-
         return new ValidationResult(List.copyOf(acceptedItems), List.copyOf(rejectedItemNames));
+    }
+
+    public record ValidationResult(List<ParsedFoodItem> acceptedItems, List<String> rejectedItemNames) {
     }
 
     private boolean isValid(ParsedFoodItem item) {
         String displayName = displayName(item);
-
         if (item == null || item.getOriginalInput() == null || item.getOriginalInput().isBlank()) {
-            log.warn("Валидатор: пустое имя продукта");
+            log.warn("Validator: product name is empty");
             return false;
         }
         if (item.getGrams() == null || item.getGrams() < 0) {
-            log.warn("Валидатор: у продукта '{}' некорректный вес (null или < 0)", displayName);
+            log.warn("Validator: product '{}' has invalid weight (null or < 0)", displayName);
             return false;
         }
         if (item.getGrams() > MAX_GRAMS_PER_ITEM) {
-            log.warn("Валидатор: у продукта '{}' слишком большой вес", displayName);
+            log.warn("Validator: product '{}' weight is too high", displayName);
             return false;
         }
         if (item.getTotalCalories() == null || item.getTotalCalories() < 0 || item.getTotalCalories() > MAX_CALORIES_PER_100_GRAMS * 5) {
-            log.warn("Валидатор: у продукта '{}' подозрительные калории", displayName);
+            log.warn("Validator: product '{}' has suspicious calorie count", displayName);
             return false;
         }
-
-        if (!isMacroValid(item.getOriginalInput(), "Белки", item.getTotalProtein()) ||
-                !isMacroValid(item.getOriginalInput(), "Жиры", item.getTotalFat()) ||
-                !isMacroValid(item.getOriginalInput(), "Углеводы", item.getTotalCarbs())) {
+        if (!isMacroValid(item.getOriginalInput(), "Proteins", item.getTotalProtein()) ||
+                !isMacroValid(item.getOriginalInput(), "Fats", item.getTotalFat()) ||
+                !isMacroValid(item.getOriginalInput(), "Carbs", item.getTotalCarbs())) {
             return false;
         }
-
         return true;
     }
 
     private boolean isMacroValid(String itemName, String macroName, Double value) {
         if (value == null) {
-            log.warn("Валидатор: у продукта '{}' {} = null. Пропускаем.", itemName, macroName);
+            log.warn("Validator: product '{}' {} is null. Skipping.", itemName, macroName);
             return false;
         }
         if (value < 0 || value > 100) {
-            log.warn("Валидатор: у продукта '{}' некорректное значение {}: {} (должно быть 0..100)",
+            log.warn("Validator: product '{}' has invalid value for {}: {} (must be 0..100)",
                     itemName, macroName, value);
             return false;
         }
@@ -81,9 +80,6 @@ public class MealInputValidator {
     private String displayName(ParsedFoodItem item) {
         return item != null && item.getOriginalInput() != null && !item.getOriginalInput().isBlank()
                 ? item.getOriginalInput()
-                : "позиция без названия";
-    }
-
-    public record ValidationResult(List<ParsedFoodItem> acceptedItems, List<String> rejectedItemNames) {
+                : "unnamed item";
     }
 }

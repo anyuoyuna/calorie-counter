@@ -39,14 +39,12 @@ public class GmailService {
                 GoogleNetHttpTransport.newTrustedTransport(),
                 GsonFactory.getDefaultInstance(),
                 refreshToken, clientId, clientSecret).execute();
-
         Credential credential = new GoogleCredential.Builder()
                 .setTransport(GoogleNetHttpTransport.newTrustedTransport())
                 .setJsonFactory(GsonFactory.getDefaultInstance())
                 .setClientSecrets(clientId, clientSecret)
                 .build()
                 .setFromTokenResponse(response);
-
         return new Gmail.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),
                 GsonFactory.getDefaultInstance(),
@@ -58,10 +56,8 @@ public class GmailService {
     public List<Message> fetchNewGrabReceipts() throws Exception {
         Gmail service = getGmailClient();
         String query = "from:no-reply@grab.com subject:\"e-receipt\" is:unread";
-
         ListMessagesResponse response = service.users().messages().list("me")
                 .setQ(query).execute();
-
         return response.getMessages() != null ? response.getMessages() : new ArrayList<>();
     }
 
@@ -70,24 +66,19 @@ public class GmailService {
             Message message = getGmailClient().users().messages().get("me", messageId).execute();
             StringBuilder body = new StringBuilder();
             extractTextFromPart(message.getPayload(), body);
-
             String rawHtml = body.toString();
-
             String cleanText = rawHtml.replaceAll("(?is)<style.*?>.*?</style>", "");
             cleanText = cleanText.replaceAll("(?is)<script.*?>.*?</script>", "");
-
             cleanText = cleanText.replaceAll("<[^>]*>", " ");
-
             cleanText = cleanText.replace("&nbsp;", " ")
                     .replace("&amp;", "&")
                     .replaceAll("\\s+", " ")
                     .trim();
-
-            log.info("Тело письма {} очищено. Было: {}, стало: {}",
+            log.info("Email body {} cleaned. Was: {}, now: {}",
                     messageId, rawHtml.length(), cleanText.length());
             return cleanText;
         } catch (Exception e) {
-            log.error("Ошибка при получении тела письма {}", messageId, e);
+            log.error("Error retrieving email body {}", messageId, e);
             return null;
         }
     }
@@ -97,7 +88,6 @@ public class GmailService {
             byte[] decodedBytes = Base64.getUrlDecoder().decode(part.getBody().getData());
             out.append(new String(decodedBytes));
         }
-
         if (part.getParts() != null) {
             for (MessagePart subPart : part.getParts()) {
                 extractTextFromPart(subPart, out);

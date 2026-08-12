@@ -11,5 +11,5 @@ public class ParsedActivity {
     private String date; // YYYY-MM-DD
     private String activityType;
     private Integer durationMinutes;
-    private Integer estimatedCaloriesBurned; // null, если невозможно оценить
+    private Integer estimatedCaloriesBurned;
 }

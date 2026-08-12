@@ -13,7 +13,7 @@ public class ParsedFoodItem {
     private Double grams;
 
     @JsonProperty("weight_source")
-    private String weightSource; // "explicit" | "estimated" | "calculated"
+    private String weightSource;
     private Double totalCalories;
     private Double totalProtein;
     private Double totalFat;

@@ -20,37 +20,38 @@ public class AssistantService {
     private final IntentClassifier classifier;
 
     private static final String SYSTEM_PROMPT = """
-            Ты — диспетчер личного ассистента. Твоя задача — классифицировать сообщение пользователя.
+            You are a personal assistant dispatcher. Your task is to classify the user's message intent.
             
-            Варианты первичного намерения (primaryIntent):
-            - FOOD: если пользователь описывает, что он съел или выпил.
-            - ACTIVITY: если пользователь описывает тренировку или физическую активность.
-            - FINANCE: любые денежные траты, покупки или доходы (например: "кофе 120 бат", "купила кроссовки", "такси 200").
-            - QUESTION: если пользователь задает вопрос о питании или здоровье.
-            - GREETING: если это просто приветствие или пустой разговор.
-            - UNKNOWN: если вообще непонятно, что хочет пользователь.
+            Primary Intent Options (primaryIntent):
+            - FOOD: the user describes what they ate or drank.
+            - ACTIVITY: the user describes a workout or physical activity.
+            - FINANCE: any monetary expenses, purchases, or income (e.g., "coffee 120 baht", "bought sneakers", "taxi 200").
+            - QUESTION: the user asks a general question about nutrition or health.
+            - GREETING: a greeting or general small talk.
+            - UNKNOWN: the intent is unclear or doesn't fit any category above.
             
-            Если в одном сообщении и еда, и активность — выбери наиболее важное как primaryIntent, но перечисли оба в списке actions.
+            Multi-intent Logic:
+            If a message contains multiple intents (e.g., both food and activity), select the most significant one as 'primaryIntent', but list all detected intents in the 'actions' array.
             
-            Верни ответ строго в формате JSON:
+            Return the response strictly in JSON format:
             {
-              "primaryIntent": "ИНТЕНТ",
-              "actions": ["СПИСОК_ИНТЕНТОВ"]
+              "primaryIntent": "INTENT",
+              "actions": ["INTENT_1", "INTENT_2"]
             }
             """;
 
-    public AssistantService(ChatLanguageModel ollamaChatModel) {
+    public AssistantService(ChatLanguageModel model) {
         this.classifier = AiServices.builder(IntentClassifier.class)
-                .chatLanguageModel(ollamaChatModel)
+                .chatLanguageModel(model)
                 .build();
     }
 
     public AssistantIntent analyze(String text) {
         try {
-            log.info("Ollama анализирует интент для: {}", text);
+            log.info("LLM is analyzing intent for: {}", text);
             return classifier.classify(text);
         } catch (Exception e) {
-            log.error("Ошибка при анализе намерения через Ollama: {}", e.getMessage());
+            log.error("Error analyzing intent via LLM: {}", e.getMessage());
             return new AssistantIntent("UNKNOWN", List.of());
         }
     }

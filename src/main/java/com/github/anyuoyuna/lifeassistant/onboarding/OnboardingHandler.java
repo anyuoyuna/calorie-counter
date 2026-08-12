@@ -34,11 +34,11 @@ public class OnboardingHandler {
 
     public void startOnboarding(Long telegramId) {
         activeSessions.put(telegramId, new OnboardingState());
-        log.info("Начат онбординг для пользователя {}", telegramId);
+        log.info("Onboarding started for user {}", telegramId);
     }
 
     public SendMessage firstQuestion(Long chatId) {
-        return simple(chatId, "Привет! Давай познакомимся. Как мне тебя называть?");
+        return simple(chatId, "Hi! Let's get to know each other. What should I call you?");
     }
 
     public SendMessage handleAnswer(Long telegramId, Long chatId, String text, String callbackData) {
@@ -47,13 +47,11 @@ public class OnboardingHandler {
             startOnboarding(telegramId);
             return firstQuestion(chatId);
         }
-
         String value = callbackData != null ? callbackData : text;
-
         switch (state.getCurrentStep()) {
             case ASK_NAME -> {
                 if (value == null || value.isBlank()) {
-                    return retry(chatId, "Пожалуйста, введи свое имя");
+                    return retry(chatId, "Please enter your name");
                 }
                 state.setDisplayName(value);
                 state.setCurrentStep(OnboardingStep.ASK_GENDER);
@@ -66,21 +64,21 @@ public class OnboardingHandler {
             }
             case ASK_BIRTH_DATE -> {
                 LocalDate date = parseDate(value);
-                if (date == null) return retry(chatId, "Не поняла дату. Формат: ДД.ММ.ГГГГ, например 15.03.1995");
+                if (date == null) return retry(chatId, "Didn't recognize the date. Format: DD.MM.YYYY, e.g., 15.03.1995");
                 state.setBirthDate(date);
                 state.setCurrentStep(OnboardingStep.ASK_HEIGHT);
                 return askHeight(chatId);
             }
             case ASK_HEIGHT -> {
                 Double height = parseDoubleInRange(value, 100, 250);
-                if (height == null) return retry(chatId, "Рост должен быть числом от 100 до 250 см");
+                if (height == null) return retry(chatId, "Height must be a number between 100 and 250 cm");
                 state.setHeightCm(height);
                 state.setCurrentStep(OnboardingStep.ASK_WEIGHT);
                 return askWeight(chatId);
             }
             case ASK_WEIGHT -> {
                 Double weight = parseDoubleInRange(value, 30, 300);
-                if (weight == null) return retry(chatId, "Вес должен быть числом от 30 до 300 кг");
+                if (weight == null) return retry(chatId, "Weight must be a number between 30 and 300 kg");
                 state.setWeightKg(weight);
                 state.setCurrentStep(OnboardingStep.ASK_BODY_FAT);
                 return askBodyFat(chatId);
@@ -90,7 +88,7 @@ public class OnboardingHandler {
                     state.setBodyFatPercent(null);
                 } else {
                     Double fat = parseDoubleInRange(value, 3, 60);
-                    if (fat == null) return retry(chatId, "Введи число от 3 до 60, или нажми \"Не знаю\"");
+                    if (fat == null) return retry(chatId, "Enter a number between 3 and 60, or tap \"I don't know\"");
                     state.setBodyFatPercent(fat);
                 }
                 state.setCurrentStep(OnboardingStep.ASK_MUSCLE_PERCENT);
@@ -101,7 +99,7 @@ public class OnboardingHandler {
                     state.setMuscleWeight(null);
                 } else {
                     Double muscle = parseDoubleInRange(value, 10, 70);
-                    if (muscle == null) return retry(chatId, "Введи число от 10 до 70, или нажми \"Не знаю\"");
+                    if (muscle == null) return retry(chatId, "Enter a number between 10 and 70, or tap \"I don't know\"");
                     state.setMuscleWeight(muscle);
                 }
                 state.setCurrentStep(OnboardingStep.ASK_GOAL);
@@ -122,86 +120,86 @@ public class OnboardingHandler {
                     state.setTargetWeightKg(null);
                 } else {
                     Double target = parseDoubleInRange(value, 30, 300);
-                    if (target == null) return retry(chatId, "Введи число от 30 до 300 кг, или нажми \"Пропустить\"");
+                    if (target == null) return retry(chatId, "Enter a number between 30 and 300 kg, or tap \"Skip\"");
                     state.setTargetWeightKg(target);
                 }
                 return finishOnboarding(telegramId, chatId, state);
             }
             default -> {
-                log.warn("Онбординг в неожиданном состоянии для пользователя {}: {}", telegramId, state.getCurrentStep());
-                return retry(chatId, "Что-то пошло не так, начни заново через /start");
+                log.warn("Onboarding in unexpected state for user {}: {}", telegramId, state.getCurrentStep());
+                return retry(chatId, "Something went wrong, please start over with /start");
             }
         }
     }
 
     private SendMessage finishOnboarding(Long telegramId, Long chatId, OnboardingState state) {
         int dailyGoal = completionService.completeOnboarding(telegramId, state);
-
         activeSessions.remove(telegramId);
-
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(String.format(
-                "Профиль готов!\nТвоя дневная цель: %d ккал\n\nТеперь просто пиши мне, что съела — я всё посчитаю.",
+                "Profile is ready!\nnYour daily goal: %d kcal\n\nNow just tell me what you've eaten — I'll track everything.",
                 dailyGoal));
         return message;
     }
 
     private SendMessage askGender(Long chatId) {
-        return withButtons(chatId, "Для начала — укажи пол (нужно для расчёта нормы калорий):",
-                List.of(button("Женский", "FEMALE"), button("Мужской", "MALE")));
+        return withButtons(chatId, "To start, select your sex (needed to calculate your calorie intake):",
+                List.of(button("Female", "FEMALE"), button("Male", "MALE")));
     }
 
     private SendMessage askBirthDate(Long chatId) {
-        return simple(chatId, "Дата рождения? Формат: ДД.ММ.ГГГГ");
+        return simple(chatId, "Date of birth? Format: DD.MM.YYYY");
     }
 
     private SendMessage askHeight(Long chatId) {
-        return simple(chatId, "Рост в сантиметрах?");
+        return simple(chatId, "Height in centimeters?");
     }
 
     private SendMessage askWeight(Long chatId) {
-        return simple(chatId, "Текущий вес в кг?");
+        return simple(chatId, "Current weight in kg?");
     }
 
     private SendMessage askBodyFat(Long chatId) {
-        return withButtons(chatId, "Процент жира (если знаешь)?",
-                List.of(button("Не знаю", "UNKNOWN")));
+        return withButtons(chatId, "Body fat percentage (if you know it)?",
+                List.of(button("I don't know", "UNKNOWN")));
     }
 
     private SendMessage askMusclePercent(Long chatId) {
-        return withButtons(chatId, "Вес мышечной массы (если знаешь)?",
-                List.of(button("Не знаю", "UNKNOWN")));
+        return withButtons(chatId, "Muscle mass (if you know it)?",
+                List.of(button("I don't know", "UNKNOWN")));
     }
 
     private SendMessage askGoal(Long chatId) {
-        return withButtons(chatId, "Какая у тебя цель?",
+        return withButtons(chatId, "What is your goal?",
                 List.of(
-                        button("Похудение, сохраняя мышцы", "LOSE_WEIGHT_KEEP_MUSCLE"),
-                        button("Похудение", "LOSE_WEIGHT"),
-                        button("Поддержание веса", "MAINTAIN"),
-                        button("Набор массы", "GAIN_MUSCLE")
+                        button("Lose weight keep muscle", "LOSE_WEIGHT_KEEP_MUSCLE"),
+                        button("Lose weight", "LOSE_WEIGHT"),
+                        button("Maintain", "MAINTAIN"),
+                        button("Gain muscle", "GAIN_MUSCLE")
                 ));
     }
-//TODO исправить тут на textblock
+
     private SendMessage askActivityLevel(Long chatId) {
         return withButtons(chatId,
-                "Базовый уровень активности (без учёта отдельных тренировок)?\n\n" +
-                        "Сидячий — почти не двигаюсь\n" +
-                        "Лёгкий — активность 1-3 раза в неделю\n" +
-                        "Умеренный — 3-5 раз в неделю\n" +
-                        "Высокий — 6-7 раз в неделю",
+                """
+                        Base activity level (excluding specific workouts)?
+                        Sedentary — almost no movement
+                        Light — active 1–3 times a week
+                        Moderate — active 3–5 times a week
+                        High — active 6–7 times a week
+                     """,
                 List.of(
-                        button("Сидячий", "SEDENTARY"),
-                        button("Лёгкий", "LIGHT"),
-                        button("Умеренный", "MODERATE"),
-                        button("Высокий", "ACTIVE")
+                        button("sedentary", "SEDENTARY"),
+                        button("Light", "LIGHT"),
+                        button("Moderate", "MODERATE"),
+                        button("High", "ACTIVE")
                 ));
     }
 
     private SendMessage askTargetWeight(Long chatId) {
-        return withButtons(chatId, "Желаемый вес в кг? (можно пропустить)",
-                List.of(button("Пропустить", "SKIP")));
+        return withButtons(chatId, "Target weight in kg? (optional)",
+                List.of(button("Skip", "SKIP")));
     }
 
     private SendMessage simple(Long chatId, String text) {
@@ -219,11 +217,9 @@ public class OnboardingHandler {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(text);
-
         List<List<InlineKeyboardButton>> rows = buttons.stream()
                 .map(List::of)
                 .toList();
-
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(rows);
         message.setReplyMarkup(markup);

@@ -22,33 +22,20 @@ public class GrabReceiptConsumer {
 
     @KafkaListener(topics = "raw-receipts", groupId = "life-assistant-group-v3")
     public void consume(GrabReceiptEvent event) {
-        log.info("KAFKA CONSUMER: Начало обработки письма: {}", event.messageId());
-
+        log.info("KAFKA CONSUMER: Started processing email: {}", event.messageId());
         try {
-            log.info("Шаг 1: Запрашиваю текст письма из Gmail...");
             String emailBody = gmailService.getMessageBody(event.messageId());
-
             if (emailBody == null) {
-                log.error("Шаг 1 ПРОВАЛ: Тело письма не получено");
                 return;
             }
-            log.info("Шаг 1 УСПЕХ: Текст письма получен (длина: {})", emailBody.length());
-
-            log.info("Шаг 2: Отправляю в Gemini...");
-            ParsedExpense parsed = aiAssistant.parseExpense("Это текст чека Grab. Извлеки сумму и описание: " + emailBody);
-
-            log.info("Шаг 2 УСПЕХ: Gemini вернула: {} бат, {}", parsed.amount(), parsed.description());
-
-            log.info("Шаг 3: Сохраняю в БД и Таблицу...");
+            ParsedExpense parsed = aiAssistant.parseExpense("This is a Grab receipt text. Extract the amount and description: " + emailBody);
             User user = userRepo.findById(event.userId())
-                    .orElseThrow(() -> new RuntimeException("Пользователь с ID " + event.userId() + " не найден в БД! Проверь DBeaver."));
+                    .orElseThrow(() -> new RuntimeException("User with ID " + event.userId() + " not found in DB! Check DBeaver."));
             financeService.recordExpenseFromText(user,
                     "Grab: " + parsed.description() + " " + parsed.amount());
-
-            log.info("✅ ШАГ 3 УСПЕХ: Письмо {} полностью обработано!", event.messageId());
-
+            log.info("✅ Email {} fully processed!", event.messageId());
         } catch (Exception e) {
-            log.error("❌ КРИТИЧЕСКАЯ ОШИБКА в Consumer: ", e);
+            log.error("❌ CRITICAL ERROR in Consumer: ", e);
         }
     }
 }

@@ -9,8 +9,8 @@ import java.util.List;
 @Getter @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ParsedMealResponse {
-    private String date; // формат YYYY-MM-DD
-    private String meal; // "breakfast" | "lunch" | "dinner" | "snack"
+    private String date; // YYYY-MM-DD
+    private String meal;
     private List<ParsedFoodItem> items;
     private List<String> notes;
 }

@@ -45,7 +45,6 @@ public class OnboardingCompletionService {
         profile.setActivityLevel(state.getActivityLevel());
         profile.setTargetWeightKg(state.getTargetWeightKg());
         profileRepo.save(profile);
-
         WeightLog weightLog = new WeightLog();
         weightLog.setUser(user);
         weightLog.setLoggedAt(LocalDate.now());
@@ -53,7 +52,6 @@ public class OnboardingCompletionService {
         weightLog.setBodyFatPercent(state.getBodyFatPercent());
         weightLog.setMuscleWeight(state.getMuscleWeight());
         weightLogRepo.save(weightLog);
-
         CalorieCalculationService.NutritionTargets targets = calorieService.calculateTargets(profile, state.getWeightKg());
         user.setDailyCalorieGoal(targets.calories());
         user.setDailyProteinGoal(targets.protein());
@@ -61,8 +59,7 @@ public class OnboardingCompletionService {
         user.setDailyCarbsGoal(targets.carbs());
         user.setDailyFiberGoal(targets.fiber());
         userRepo.save(user);
-
-        log.info("Онбординг завершён для пользователя {}, дневная цель = {} ккал", telegramId, targets.calories());
+        log.info("Onboarding completed for user {}, daily goal = {} kcal", telegramId, targets.calories());
         return targets.calories();
     }
 }

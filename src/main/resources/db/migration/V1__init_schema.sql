@@ -24,7 +24,7 @@ CREATE TABLE food_items (
     carbs DOUBLE PRECISION DEFAULT 0,
     fiber DOUBLE PRECISION DEFAULT 0,
     source VARCHAR(50),
-    embedding vector(768) -- Размерность для nomic-embed-text
+    embedding vector(3072)
 );
 
 -- 3. Записи о приемах пищи

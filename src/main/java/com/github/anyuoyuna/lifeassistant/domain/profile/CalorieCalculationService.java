@@ -20,7 +20,6 @@ public class CalorieCalculationService {
         double bmr = calculateBmr(profile, currentWeightKg);
         double tdee = calculateTdee(bmr, profile.getActivityLevel());
         double calorieGoal = applyGoalAdjustment(tdee, profile.getGoalType());
-
         double proteinPerKg = switch (profile.getGoalType()) {
             case LOSE_WEIGHT_KEEP_MUSCLE -> 2.0;
             case LOSE_WEIGHT -> 1.6;
@@ -29,17 +28,12 @@ public class CalorieCalculationService {
         };
         double proteinGrams = proteinPerKg * currentWeightKg;
         double proteinCalories = proteinGrams * 4;
-
         double fatCalories = calorieGoal * 0.28;
         double fatGrams = fatCalories / 9;
-
         double carbsCalories = Math.max(calorieGoal - proteinCalories - fatCalories, 0);
         double carbsGrams = carbsCalories / 4;
-
         double fiberGrams = profile.getGender() == Gender.MALE ? 35 : 25;
-
         log.debug("BMR={}, TDEE={}, calorieGoal={}", bmr, tdee, calorieGoal);
-
         return new NutritionTargets((int) Math.round(calorieGoal), proteinGrams, fatGrams, carbsGrams, fiberGrams);
     }
 

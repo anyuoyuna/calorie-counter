@@ -65,41 +65,33 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
             handleCallback(update);
             return;
         }
-
         if (update.getMessage().hasPhoto()) {
             handlePhotoMessage(update);
             return;
         }
-
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
-
         Long telegramId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
         Long chatId = update.getMessage().getChatId();
-
         Optional<User> userOpt = userRepo.findByTelegramId(telegramId);
-
         if (userOpt.isEmpty()) {
             startNewUserFlow(telegramId, chatId);
             return;
         }
-
         User user = userOpt.get();
-
         if (onboardingHandler.isInProgress(telegramId)) {
             send(chatId, onboardingHandler.handleAnswer(telegramId, chatId, text, null));
             if (!onboardingHandler.isInProgress(telegramId)) {
                 User updatedUser = userRepo.findByTelegramId(telegramId).orElseThrow();
-                send(chatId, BotResponse.plainWithMenu("Профиль готов! Теперь я буду узнавать тебя по имени " + updatedUser.getDisplayName()));
+                send(chatId, BotResponse.plainWithMenu("Profile is ready! From now on, I'll recognize you by name "
+                        + updatedUser.getDisplayName()));
             }
             return;
         }
-
         if (profileEditHandler.isInProgress(telegramId)) {
             send(chatId, profileEditHandler.handle(telegramId, chatId, text, null));
             return;
         }
-
         BotResponse response = router.route(user, text);
         if (response != null) {
             send(chatId, response);
@@ -117,7 +109,7 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
         if (onboardingHandler.isInProgress(telegramId)) {
             send(chatId, onboardingHandler.handleAnswer(telegramId, chatId, null, callbackData));
             if (!onboardingHandler.isInProgress(telegramId)) {
-                send(chatId, BotResponse.plainWithMenu("Теперь можешь пользоваться ботом 👇"));
+                send(chatId, BotResponse.plainWithMenu("Now you can use bot 👇"));
             }
             return;
         }
@@ -147,7 +139,7 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке сообщения в Telegram", e);
+            log.error("Error sending message to Telegram", e);
         }
     }
 
@@ -155,8 +147,7 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
         User newUser = new User();
         newUser.setTelegramId(telegramId);
         userRepo.save(newUser);
-        log.info("Зарегистрирован абсолютно новый пользователь: {}", telegramId);
-
+        log.info("Brand new user registered: {}", telegramId);
         onboardingHandler.startOnboarding(telegramId);
         send(chatId, onboardingHandler.firstQuestion(chatId));
     }
@@ -171,7 +162,7 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
             downloaded.delete();
             return bytes;
         } catch (Exception e) {
-            log.error("Ошибка при скачивании фото из Telegram", e);
+            log.error("Error downloading photo from Telegram", e);
             return null;
         }
     }
@@ -179,33 +170,28 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
     private void handlePhotoMessage(Update update) {
         Long chatId = update.getMessage().getChatId();
         Long telegramId = update.getMessage().getFrom().getId();
-
         List<PhotoSize> photos = update.getMessage().getPhoto();
         String fileId = photos.get(photos.size() - 1).getFileId();
-
         User user = userRepo.findByTelegramId(telegramId).orElseThrow();
-
-        send(chatId, BotResponse.plain("Вижу чек, секунду, анализирую..."));
-
+        send(chatId, BotResponse.plain("Got your receipt, give me a sec, analyzing it..."));
         CompletableFuture.runAsync(() -> {
             try {
                 byte[] photoBytes = downloadPhoto(fileId);
                 String base64Data = Base64.getEncoder().encodeToString(photoBytes);
-                log.info("Скачано фото чека, размер: {} байт", photoBytes.length);
+                log.info("Downloaded receipt photo, size: {} bytes", photoBytes.length);
                 if (photoBytes.length < 100) {
-                    log.error("Файл слишком маленький, возможно скачивание не удалось");
+                    log.error("File is too small, download may have failed");
                 }
                 Image image = Image.builder()
                         .base64Data(base64Data)
                         .mimeType("image/jpeg")
                         .build();
-
                 BotResponse response = financeMessageHandler.handlePhoto(user, image);
                 send(chatId, response);
 
             } catch (Exception e) {
-                log.error("Ошибка при обработке фото", e);
-                send(chatId, BotResponse.plain("Не удалось прочитать чек. Попробуй сделать фото четче."));
+                log.error("Error processing photo", e);
+                send(chatId, BotResponse.plain("Couldn't read the receipt. Try taking a clearer photo."));
             }
         });
     }

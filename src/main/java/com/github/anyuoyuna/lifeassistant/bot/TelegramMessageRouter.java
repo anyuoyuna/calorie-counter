@@ -41,12 +41,12 @@ public class TelegramMessageRouter {
     public BotResponse route(User user, String text) {
 
         if (text.equalsIgnoreCase("/undo")) {
-            log.info("Пользователь {} запросил отмену действия", user.getDisplayName());
+            log.info("User {} requested action cancellation", user.getDisplayName());
             String message = undoService.undoLastAction(user);
             return BotResponse.plain(message);
         }
         if (text.equals("/start")) {
-            return BotResponse.plainWithMenu("С возвращением! Просто пиши мне, что съела, или как потренировалась.");
+            return BotResponse.plainWithMenu("Welcome back! Just tell me what you ate or how you worked out.");
         }
         if (text.equals(BTN_TODAY) || text.equals("/today")) {
             return BotResponse.htmlWithMenu(dailyReportService.buildDailySummary(user, LocalDate.now(clock)));
@@ -57,33 +57,29 @@ public class TelegramMessageRouter {
         if (text.equals(BTN_WEEK) || text.equals("/week")) {
             return BotResponse.plainWithMenu(weeklySummaryService.buildWeeklySummary(user));
         }
-
         if (text.equals(BTN_FOOD)) {
-            return BotResponse.plain("Просто напиши, что ты съела (например: омлет из 2 яиц и кофе):");
+            return BotResponse.plain("Just write what you ate (e.g., 2-egg omelet and coffee):");
         }
         if (text.equals(BTN_ACTIVITY)) {
-            return BotResponse.plain("Опиши свою активность (например: бегала 30 минут):");
+            return BotResponse.plain("Describe your activity (e.g., ran for 30 minutes):");
         }
         if (text.equals(BTN_QUESTION)) {
-            return BotResponse.plain("Задай любой вопрос о питании или здоровье:");
+            return BotResponse.plain("Ask any question about nutrition or health:");
         }
         if (text.equals("/import_history")) {
             int count = financeService.importHistoryFromSheets();
-            return BotResponse.plain("Импорт завершен! Загружено строк: " + count);
+            return BotResponse.plain("Import complete! Loaded rows: " + count);
         }
-
-        log.info("Анализирую текст через AssistantService: {}", text);
         AssistantIntent intent = assistantService.analyze(text);
-
         return switch (intent.primaryIntent()) {
             case "FOOD" -> foodMessageHandler.handle(user, text);
             case "ACTIVITY" -> activityMessageHandler.handle(user, text);
             case "FINANCE" -> financeMessageHandler.handle(user, text);
             case "QUESTION" -> questionMessageHandler.handle(text);
-            case "GREETING" -> BotResponse.plainWithMenu("Привет! Я на связи. Что сегодня запишем?");
+            case "GREETING" -> BotResponse.plainWithMenu("Hey! I'm here. What are we logging today?");
             default -> {
-                log.warn("Не удалось определить интент для текста: {}", text);
-                yield BotResponse.plain("Я не совсем поняла запрос. Ты хочешь записать еду, тренировку или трату?");
+                log.warn("Failed to determine intent for text: {}", text);
+                yield BotResponse.plain("I didn't quite catch that. Do you want to log food, a workout, or an expense?");
             }
         };
     }
