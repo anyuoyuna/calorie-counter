@@ -70,6 +70,9 @@ public class TelegramMessageRouter {
             int count = financeService.importHistoryFromSheets();
             return BotResponse.plain("Import complete! Loaded rows: " + count);
         }
+        if (text.equals("/ping")) {
+            return BotResponse.plain("I am alive and working on Render!");
+        }
         AssistantIntent intent = assistantService.analyze(text);
         return switch (intent.primaryIntent()) {
             case "FOOD" -> foodMessageHandler.handle(user, text);
