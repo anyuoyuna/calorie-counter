@@ -3,7 +3,6 @@ package com.github.anyuoyuna.lifeassistant.infrastructure.ai;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedActivity;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedExpense;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedMealResponse;
-import dev.langchain4j.data.image.Image;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;

@@ -5,7 +5,6 @@ import com.github.anyuoyuna.lifeassistant.dto.ParsedExpense;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedFoodItem;
 import com.github.anyuoyuna.lifeassistant.dto.ParsedMealResponse;
 import com.github.anyuoyuna.lifeassistant.infrastructure.ai.GeneralAiAssistant;
-import dev.langchain4j.data.image.Image;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
