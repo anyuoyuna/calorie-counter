@@ -46,11 +46,6 @@ class FoodParsingServiceTest {
             public String getWeeklySummary(String data) { return null; }
 
             @Override
-            public String parseReceipt(Image image) {
-                return null;
-            }
-
-            @Override
             public ParsedActivity parseActivity(String text, double weight, String today) { return null; }
 
             @Override

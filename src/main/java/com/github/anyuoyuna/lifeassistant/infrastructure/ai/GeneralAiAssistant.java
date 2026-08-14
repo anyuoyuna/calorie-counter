@@ -153,7 +153,4 @@ public interface GeneralAiAssistant {
 
     @SystemMessage(WEEKLY_SUMMARY_PROMPT)
     String getWeeklySummary(@UserMessage String data);
-
-    @SystemMessage(PHOTO_BILL_PROMPT)
-    String parseReceipt(@UserMessage Image image);
 }

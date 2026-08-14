@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -27,19 +28,29 @@ public class GoogleSheetsService {
     private Integer operationsSheetId;
 
     public GoogleSheetsService(@Value("${google.sheets.id}") String spreadsheetId,
-                               @Value("${google.credentials.path}") String credentialsPath) throws Exception {
+                               @Value("${google.credentials.json:}") String jsonConfig) throws Exception {
         this.spreadsheetId = spreadsheetId;
-        InputStream in = getClass().getResourceAsStream("/google-credentials.json");
-        if (in == null) {
-            throw new RuntimeException("File google-credentials.json not found in resources!");
+        GoogleCredentials credentials;
+
+        if (jsonConfig != null && !jsonConfig.isBlank()) {
+            log.info("Loading Google Credentials from environment variable");
+            credentials = GoogleCredentials.fromStream(
+                            new ByteArrayInputStream(jsonConfig.getBytes()))
+                    .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
+        } else {
+            log.info("Loading Google Credentials from local file");
+            InputStream in = getClass().getResourceAsStream("/google-credentials.json");
+            if (in == null) {
+                throw new RuntimeException("File google-credentials.json not found!");
+            }
+            credentials = GoogleCredentials.fromStream(in)
+                    .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
         }
-        GoogleCredentials credentials = GoogleCredentials.fromStream(in)
-                .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));
         this.sheetsService = new Sheets.Builder(
                 GoogleNetHttpTransport.newTrustedTransport(),
                 GsonFactory.getDefaultInstance(),
                 new HttpCredentialsAdapter(credentials))
-                .setApplicationName("CalorieCounterBot")
+                .setApplicationName("LifeAssistantBot")
                 .build();
     }
 
