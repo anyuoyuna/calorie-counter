@@ -2,7 +2,9 @@ package com.github.anyuoyuna.lifeassistant.config;
 
 import com.github.anyuoyuna.lifeassistant.bot.LifeAssistantBot;
 import com.github.anyuoyuna.lifeassistant.domain.assistant.AssistantService;
+import com.github.anyuoyuna.lifeassistant.domain.finance.FinanceTools;
 import com.github.anyuoyuna.lifeassistant.infrastructure.ai.GeneralAiAssistant;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
@@ -47,9 +49,11 @@ public class AiConfig {
     }
 
     @Bean
-    public GeneralAiAssistant generalAiAssistant() {
+    public GeneralAiAssistant generalAiAssistant(FinanceTools financeTools) {
         return AiServices.builder(GeneralAiAssistant.class)
                 .chatLanguageModel(geminiChatModel())
+                .tools(financeTools)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();
     }
 

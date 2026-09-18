@@ -147,7 +147,6 @@ public interface GeneralAiAssistant {
     @SystemMessage(FINANCE_PROMPT)
     ParsedExpense parseExpense(@UserMessage String text);
 
-    @SystemMessage("You are a friendly and supportive nutrition and health assistant. Provide concise, relevant, and straight-to-the-point answers. All your responses must be written strictly in Russian.")
     String askQuestion(@UserMessage String question);
 
     @SystemMessage(WEEKLY_SUMMARY_PROMPT)

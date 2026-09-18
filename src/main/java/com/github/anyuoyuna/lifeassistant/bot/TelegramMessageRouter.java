@@ -64,7 +64,7 @@ public class TelegramMessageRouter {
             return BotResponse.plain("Describe your activity (e.g., ran for 30 minutes):");
         }
         if (text.equals(BTN_QUESTION)) {
-            return BotResponse.plain("Ask any question about nutrition or health:");
+            return BotResponse.plain("Ask question about your finance:");
         }
         if (text.equals("/import_history")) {
             int count = financeService.importHistoryFromSheets();
