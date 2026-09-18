@@ -25,7 +25,8 @@ public class AssistantService {
             Primary Intent Options (primaryIntent):
             - FOOD: the user describes what they ate or drank.
             - ACTIVITY: the user describes a workout or physical activity.
-            - FINANCE: any monetary expenses, purchases, or income (e.g., "coffee 120 baht", "bought sneakers", "taxi 200").
+            - FINANCE_ADD: any monetary expenses, purchases, or income (e.g., "coffee 120 baht", "bought sneakers", "taxi 200").
+            - FINANCE_QUERY: questions about expenses.
             - QUESTION: the user asks a general question about nutrition or health.
             - GREETING: a greeting or general small talk.
             - UNKNOWN: the intent is unclear or doesn't fit any category above.

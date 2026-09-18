@@ -77,7 +77,8 @@ public class TelegramMessageRouter {
         return switch (intent.primaryIntent()) {
             case "FOOD" -> foodMessageHandler.handle(user, text);
             case "ACTIVITY" -> activityMessageHandler.handle(user, text);
-            case "FINANCE" -> financeMessageHandler.handle(user, text);
+            case "FINANCE_ADD" -> financeMessageHandler.handle(user, text);
+            case "FINANCE_QUERY" -> financeMessageHandler.handleQuery(user, text);
             case "QUESTION" -> questionMessageHandler.handle(text);
             case "GREETING" -> BotResponse.plainWithMenu("Hey! I'm here. What are we logging today?");
             default -> {

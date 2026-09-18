@@ -120,6 +120,11 @@ public class FinanceService {
         return count;
     }
 
+    @Transactional(readOnly = true)
+    public String answerFinanceQuestion(String text) {
+        return aiAssistant.askQuestion(text);
+    }
+
     private LocalDate parseDate(String dateStr) {
         try {
             return LocalDate.parse(dateStr);

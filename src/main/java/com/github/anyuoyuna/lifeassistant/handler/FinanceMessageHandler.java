@@ -36,6 +36,16 @@ public class FinanceMessageHandler {
         }
     }
 
+    public BotResponse handleQuery(User user, String text) {
+        try {
+            String answer = financeService.answerFinanceQuestion(text);
+            return BotResponse.plain(answer);
+        } catch (Exception e) {
+            log.error("Error when answering a financial question", e);
+            return BotResponse.plain("Failed to retrieve financial analytics..");
+        }
+    }
+
     private BotResponse formatResponse(Expense e) {
         return BotResponse.plain(String.format("✅ Logged: %s — %.2f thb (%s)",
                 e.getCategory(), e.getAmount(), e.getDescription()));

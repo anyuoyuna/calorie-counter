@@ -138,6 +138,13 @@ public interface GeneralAiAssistant {
             IMPORTANT: Use only data from the image. If you cannot find the amount, return 0.
             """;
 
+    String QUESTION_PROMPT = """
+            You are personal AI assistant.
+            You help user with:
+            1. Calorie and health tracking.
+            2. Financial analysis and answers to questions regarding his spending.
+            """;
+
     @SystemMessage(FOOD_PROMPT)
     ParsedMealResponse parseFood(@UserMessage String text, @V("today") String today);
 
@@ -147,6 +154,7 @@ public interface GeneralAiAssistant {
     @SystemMessage(FINANCE_PROMPT)
     ParsedExpense parseExpense(@UserMessage String text);
 
+    @SystemMessage(QUESTION_PROMPT)
     String askQuestion(@UserMessage String question);
 
     @SystemMessage(WEEKLY_SUMMARY_PROMPT)
