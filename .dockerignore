@@ -1,0 +1,6 @@
+.git
+.idea
+target
+.env
+.env.*
+src/main/resources/client_secret.json
