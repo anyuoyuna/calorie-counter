@@ -5,6 +5,7 @@ import com.github.anyuoyuna.lifeassistant.domain.assistant.UndoService;
 import com.github.anyuoyuna.lifeassistant.domain.finance.FinanceService;
 import com.github.anyuoyuna.lifeassistant.dto.AssistantIntent;
 import com.github.anyuoyuna.lifeassistant.entity.User;
+import com.github.anyuoyuna.lifeassistant.exception.GeminiUnavailableException;
 import com.github.anyuoyuna.lifeassistant.handler.FinanceMessageHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,13 @@ public class TelegramMessageRouter {
         if (text.equals("/ping")) {
             return BotResponse.plain("I am alive and working on Render!");
         }
-        AssistantIntent intent = assistantService.analyze(text);
+        AssistantIntent intent;
+        try {
+            intent = assistantService.analyze(text);
+        } catch (GeminiUnavailableException e) {
+            log.warn("Gemini is unavailable while classifying a financial message", e);
+            return BotResponse.plain("AI service is temporarily unavailable. Please try again in a minute.");
+        }
         return switch (intent.primaryIntent()) {
             case "FINANCE_ADD" -> financeMessageHandler.handle(user, text);
             case "FINANCE_QUERY" -> financeMessageHandler.handleQuery(user, text);

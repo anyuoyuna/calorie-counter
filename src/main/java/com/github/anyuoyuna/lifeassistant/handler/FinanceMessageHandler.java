@@ -4,6 +4,7 @@ import com.github.anyuoyuna.lifeassistant.bot.BotResponse;
 import com.github.anyuoyuna.lifeassistant.domain.finance.FinanceService;
 import com.github.anyuoyuna.lifeassistant.entity.Expense;
 import com.github.anyuoyuna.lifeassistant.entity.User;
+import com.github.anyuoyuna.lifeassistant.exception.GeminiUnavailableException;
 import dev.langchain4j.data.image.Image;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,9 @@ public class FinanceMessageHandler {
         try {
             Expense expense = financeService.recordExpenseFromText(user, text);
             return formatResponse(expense);
+        } catch (GeminiUnavailableException e) {
+            log.warn("Gemini is unavailable while recording an expense", e);
+            return unavailableResponse();
         } catch (Exception e) {
             return BotResponse.plain("Could not detect any expenditure in the text.");
         }
@@ -31,6 +35,9 @@ public class FinanceMessageHandler {
         try {
             Expense expense = financeService.recordExpenseFromImage(user, image);
             return formatResponse(expense);
+        } catch (GeminiUnavailableException e) {
+            log.warn("Gemini is unavailable while reading a receipt", e);
+            return unavailableResponse();
         } catch (Exception e) {
             return BotResponse.plain("Failed to read the receipt from the photo.");
         }
@@ -40,6 +47,9 @@ public class FinanceMessageHandler {
         try {
             String answer = financeService.answerFinanceQuestion(text);
             return BotResponse.plain(answer);
+        } catch (GeminiUnavailableException e) {
+            log.warn("Gemini is unavailable while answering a financial question", e);
+            return unavailableResponse();
         } catch (Exception e) {
             log.error("Error when answering a financial question", e);
             return BotResponse.plain("Failed to retrieve financial analytics..");
@@ -49,5 +59,9 @@ public class FinanceMessageHandler {
     private BotResponse formatResponse(Expense e) {
         return BotResponse.plain(String.format("✅ Logged: %s — %.2f thb (%s)",
                 e.getCategory(), e.getAmount(), e.getDescription()));
+    }
+
+    private BotResponse unavailableResponse() {
+        return BotResponse.plain("AI service is temporarily unavailable. Please try again in a minute.");
     }
 }

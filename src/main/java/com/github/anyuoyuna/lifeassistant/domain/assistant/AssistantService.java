@@ -1,6 +1,7 @@
 package com.github.anyuoyuna.lifeassistant.domain.assistant;
 
 import com.github.anyuoyuna.lifeassistant.dto.AssistantIntent;
+import com.github.anyuoyuna.lifeassistant.exception.GeminiUnavailableException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
@@ -42,6 +43,10 @@ public class AssistantService {
         try {
             return classifier.classify(text);
         } catch (Exception e) {
+            GeminiUnavailableException unavailable = GeminiUnavailableException.from(e);
+            if (unavailable != null) {
+                throw unavailable;
+            }
             log.error("Error analyzing intent via LLM: {}", e.getMessage());
             return new AssistantIntent("UNKNOWN", List.of());
         }

@@ -5,6 +5,7 @@ import com.github.anyuoyuna.lifeassistant.dto.ParsedExpense;
 import com.github.anyuoyuna.lifeassistant.entity.Expense;
 import com.github.anyuoyuna.lifeassistant.entity.User;
 import com.github.anyuoyuna.lifeassistant.entity.enums.ExpenseCategory;
+import com.github.anyuoyuna.lifeassistant.exception.GeminiUnavailableException;
 import com.github.anyuoyuna.lifeassistant.infrastructure.ai.GeneralAiAssistant;
 import com.github.anyuoyuna.lifeassistant.infrastructure.google.GoogleSheetsService;
 import com.github.anyuoyuna.lifeassistant.repository.ExpenseRepository;
@@ -55,7 +56,13 @@ public class FinanceService {
 
     @Transactional
     public Expense recordExpenseFromText(User user, String text) {
-        ParsedExpense parsed = aiAssistant.parseExpense(text);
+        ParsedExpense parsed;
+        try {
+            parsed = aiAssistant.parseExpense(text);
+        } catch (RuntimeException e) {
+            throwIfGeminiUnavailable(e);
+            throw e;
+        }
         return saveParsedExpense(user, parsed);
     }
 
@@ -65,16 +72,22 @@ public class FinanceService {
                 ImageContent.from(image.base64Data(), image.mimeType()),
                 TextContent.from(GeneralAiAssistant.PHOTO_BILL_PROMPT)
         );
+        String rawJson;
         try {
             Response<AiMessage> response = geminiModel.generate(message);
-            String rawJson = response.content().text();
+            rawJson = response.content().text();
             log.info("Gemini raw response: {}", rawJson);
-
+        } catch (Exception e) {
+            throwIfGeminiUnavailable(e);
+            log.error("Failed to parse receipt", e);
+            throw new RuntimeException("AI blindness detected");
+        }
+        try {
             ParsedExpense parsed = objectMapper.readValue(stripMarkdownFences(rawJson), ParsedExpense.class);
             return saveParsedExpense(user, parsed);
         } catch (Exception e) {
-            log.error("Failed to parse receipt", e);
-            throw new RuntimeException("AI blindness detected");
+            log.error("Failed to parse Gemini receipt response", e);
+            throw new RuntimeException("Failed to parse receipt response", e);
         }
     }
 
@@ -122,7 +135,12 @@ public class FinanceService {
 
     @Transactional(readOnly = true)
     public String answerFinanceQuestion(String text) {
-        return aiAssistant.askQuestion(text);
+        try {
+            return aiAssistant.askQuestion(text);
+        } catch (RuntimeException e) {
+            throwIfGeminiUnavailable(e);
+            throw e;
+        }
     }
 
     private LocalDate parseDate(String dateStr) {
@@ -170,5 +188,12 @@ public class FinanceService {
     private String stripMarkdownFences(String text) {
         if (text == null) return null;
         return text.replaceAll("```json", "").replaceAll("```", "").trim();
+    }
+
+    private void throwIfGeminiUnavailable(Throwable cause) {
+        GeminiUnavailableException unavailable = GeminiUnavailableException.from(cause);
+        if (unavailable != null) {
+            throw unavailable;
+        }
     }
 }
