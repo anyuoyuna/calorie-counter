@@ -6,8 +6,6 @@ import com.github.anyuoyuna.lifeassistant.domain.finance.FinanceTools;
 import com.github.anyuoyuna.lifeassistant.infrastructure.ai.GeneralAiAssistant;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.service.AiServices;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,20 +17,10 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 @Configuration
 public class AiConfig {
-
     @Value("${gemini.chat-model}")
     private String geminiModelName;
-
     @Value("${gemini.api.key}")
     private String geminiApiKey;
-
-    @Bean
-    public EmbeddingModel embeddingModel() {
-        return GoogleAiEmbeddingModel.builder()
-                .apiKey(geminiApiKey)
-                .modelName("gemini-embedding-001")
-                .build();
-    }
 
     @Bean("geminiModel")
     public ChatLanguageModel geminiChatModel() {

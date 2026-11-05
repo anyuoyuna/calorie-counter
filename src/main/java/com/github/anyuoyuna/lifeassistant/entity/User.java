@@ -1,6 +1,11 @@
 package com.github.anyuoyuna.lifeassistant.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,9 +24,4 @@ public class User {
     private Long telegramId;
 
     private String timezone = "Asia/Bangkok";
-    private Integer dailyCalorieGoal = 2000;
-    private Double dailyProteinGoal;
-    private Double dailyFatGoal;
-    private Double dailyCarbsGoal;
-    private Double dailyFiberGoal;
 }

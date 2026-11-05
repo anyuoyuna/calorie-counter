@@ -1,9 +1,7 @@
 package com.github.anyuoyuna.lifeassistant.bot;
 
-import com.github.anyuoyuna.lifeassistant.domain.profile.ProfileEditHandler;
 import com.github.anyuoyuna.lifeassistant.entity.User;
 import com.github.anyuoyuna.lifeassistant.handler.FinanceMessageHandler;
-import com.github.anyuoyuna.lifeassistant.onboarding.OnboardingHandler;
 import com.github.anyuoyuna.lifeassistant.repository.UserRepository;
 import dev.langchain4j.data.image.Image;
 import lombok.extern.slf4j.Slf4j;
@@ -22,15 +20,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import static com.github.anyuoyuna.lifeassistant.bot.MenuKeyboard.BTN_PROFILE;
-
 @Slf4j
 @Component
 public class LifeAssistantBot extends TelegramLongPollingBot {
-
     private final UserRepository userRepo;
-    private final OnboardingHandler onboardingHandler;
-    private final ProfileEditHandler profileEditHandler;
     private final TelegramMessageRouter router;
     private final MenuKeyboard menuKeyboard;
     private final FinanceMessageHandler financeMessageHandler;
@@ -40,15 +33,11 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
 
     public LifeAssistantBot(@Value("${telegram.bot.token}") String botToken,
                             UserRepository userRepo,
-                            OnboardingHandler onboardingHandler,
-                            ProfileEditHandler profileEditHandler,
                             MenuKeyboard menuKeyboard,
                             TelegramMessageRouter router,
                             FinanceMessageHandler financeMessageHandler) {
         super(botToken);
         this.userRepo = userRepo;
-        this.onboardingHandler = onboardingHandler;
-        this.profileEditHandler = profileEditHandler;
         this.router = router;
         this.menuKeyboard = menuKeyboard;
         this.financeMessageHandler = financeMessageHandler;
@@ -62,99 +51,66 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasCallbackQuery()) {
-            handleCallback(update);
+            log.debug("Ignoring unsupported callback {}", update.getCallbackQuery().getData());
             return;
         }
+        if (!update.hasMessage()) return;
         if (update.getMessage().hasPhoto()) {
             handlePhotoMessage(update);
             return;
         }
-        if (!update.hasMessage() || !update.getMessage().hasText()) return;
+        if (!update.getMessage().hasText()) return;
         Long telegramId = update.getMessage().getFrom().getId();
-        String text = update.getMessage().getText().trim();
         Long chatId = update.getMessage().getChatId();
-        Optional<User> userOpt = userRepo.findByTelegramId(telegramId);
-        if (userOpt.isEmpty()) {
-            startNewUserFlow(telegramId, chatId);
+        Optional<User> existing = userRepo.findByTelegramId(telegramId);
+        if (existing.isEmpty()) {
+            startNewUserFlow(telegramId, update.getMessage().getFrom().getFirstName(), chatId);
             return;
         }
-        User user = userOpt.get();
-        if (onboardingHandler.isInProgress(telegramId)) {
-            send(chatId, onboardingHandler.handleAnswer(telegramId, chatId, text, null));
-            if (!onboardingHandler.isInProgress(telegramId)) {
-                User updatedUser = userRepo.findByTelegramId(telegramId).orElseThrow();
-                send(chatId, BotResponse.plainWithMenu("Profile is ready! From now on, I'll recognize you by name "
-                        + updatedUser.getDisplayName()));
-            }
-            return;
-        }
-        if (profileEditHandler.isInProgress(telegramId)) {
-            send(chatId, profileEditHandler.handle(telegramId, chatId, text, null));
-            return;
-        }
-        BotResponse response = router.route(user, text);
-        if (response != null) {
-            send(chatId, response);
-            if (text.equals(BTN_PROFILE) || text.equals("/profile")) {
-                send(chatId, profileEditHandler.editMenu(chatId));
-            }
-        }
+        BotResponse response = router.route(existing.get(), update.getMessage().getText().trim());
+        send(chatId, response);
     }
 
-    private void handleCallback(Update update) {
-        Long telegramId = update.getCallbackQuery().getFrom().getId();
-        Long chatId = update.getCallbackQuery().getMessage().getChatId();
-        String callbackData = update.getCallbackQuery().getData();
-
-        if (onboardingHandler.isInProgress(telegramId)) {
-            send(chatId, onboardingHandler.handleAnswer(telegramId, chatId, null, callbackData));
-            if (!onboardingHandler.isInProgress(telegramId)) {
-                send(chatId, BotResponse.plainWithMenu("Now you can use bot 👇"));
-            }
-            return;
-        }
-        if (profileEditHandler.isInProgress(telegramId) || callbackData.startsWith("EDIT_MENU_")
-                || callbackData.startsWith("GOAL_") || callbackData.startsWith("ACT_")) {
-            send(chatId, profileEditHandler.handle(telegramId, chatId, null, callbackData));
-        }
+    private void startNewUserFlow(Long telegramId, String displayName, Long chatId) {
+        User user = new User();
+        user.setTelegramId(telegramId);
+        user.setDisplayName(displayName);
+        userRepo.save(user);
+        log.info("Registered user {}", telegramId);
+        send(chatId, BotResponse.plainWithMenu("Welcome! Send an expense, income, receipt, or finance question."));
     }
 
-    private void send(Long chatId, BotResponse response) {
-        if (response == null) return;
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId.toString());
-        message.setText(response.text());
-        if (response.html()) message.setParseMode("HTML");
-        if (response.showMenu()) message.setReplyMarkup(menuKeyboard.build());
-        executeMessage(message);
+    private void handlePhotoMessage(Update update) {
+        Long chatId = update.getMessage().getChatId();
+        Long telegramId = update.getMessage().getFrom().getId();
+        User user = userRepo.findByTelegramId(telegramId).orElseGet(() -> {
+            User created = new User();
+            created.setTelegramId(telegramId);
+            created.setDisplayName(update.getMessage().getFrom().getFirstName());
+            return userRepo.save(created);
+        });
+        List<PhotoSize> photos = update.getMessage().getPhoto();
+        String fileId = photos.get(photos.size() - 1).getFileId();
+        send(chatId, BotResponse.plain("Got your receipt, give me a sec, analyzing it..."));
+        CompletableFuture.runAsync(() -> processReceipt(chatId, user, fileId));
     }
 
-    private void send(Long chatId, SendMessage message) {
-        if (message == null) return;
-        message.setChatId(chatId.toString());
-        executeMessage(message);
-    }
-
-    private void executeMessage(SendMessage message) {
+    private void processReceipt(Long chatId, User user, String fileId) {
         try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Error sending message to Telegram", e);
+            byte[] photoBytes = downloadPhoto(fileId);
+            if (photoBytes == null) throw new IllegalStateException("Photo download failed");
+            Image image = Image.builder().base64Data(Base64.getEncoder().encodeToString(photoBytes))
+                    .mimeType("image/jpeg").build();
+            send(chatId, financeMessageHandler.handlePhoto(user, image));
+        } catch (Exception e) {
+            log.error("Error processing photo", e);
+            send(chatId, BotResponse.plain("Couldn't read the receipt. Try taking a clearer photo."));
         }
-    }
-
-    private void startNewUserFlow(Long telegramId, Long chatId) {
-        User newUser = new User();
-        newUser.setTelegramId(telegramId);
-        userRepo.save(newUser);
-        log.info("Brand new user registered: {}", telegramId);
-        onboardingHandler.startOnboarding(telegramId);
-        send(chatId, onboardingHandler.firstQuestion(chatId));
     }
 
     private byte[] downloadPhoto(String fileId) {
         try {
-            GetFile getFile = new org.telegram.telegrambots.meta.api.methods.GetFile();
+            GetFile getFile = new GetFile();
             getFile.setFileId(fileId);
             File file = execute(getFile);
             java.io.File downloaded = downloadFile(file);
@@ -167,32 +123,13 @@ public class LifeAssistantBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handlePhotoMessage(Update update) {
-        Long chatId = update.getMessage().getChatId();
-        Long telegramId = update.getMessage().getFrom().getId();
-        List<PhotoSize> photos = update.getMessage().getPhoto();
-        String fileId = photos.get(photos.size() - 1).getFileId();
-        User user = userRepo.findByTelegramId(telegramId).orElseThrow();
-        send(chatId, BotResponse.plain("Got your receipt, give me a sec, analyzing it..."));
-        CompletableFuture.runAsync(() -> {
-            try {
-                byte[] photoBytes = downloadPhoto(fileId);
-                String base64Data = Base64.getEncoder().encodeToString(photoBytes);
-                log.info("Downloaded receipt photo, size: {} bytes", photoBytes.length);
-                if (photoBytes.length < 100) {
-                    log.error("File is too small, download may have failed");
-                }
-                Image image = Image.builder()
-                        .base64Data(base64Data)
-                        .mimeType("image/jpeg")
-                        .build();
-                BotResponse response = financeMessageHandler.handlePhoto(user, image);
-                send(chatId, response);
-
-            } catch (Exception e) {
-                log.error("Error processing photo", e);
-                send(chatId, BotResponse.plain("Couldn't read the receipt. Try taking a clearer photo."));
-            }
-        });
+    private void send(Long chatId, BotResponse response) {
+        if (response == null) return;
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId.toString());
+        message.setText(response.text());
+        if (response.html()) message.setParseMode("HTML");
+        if (response.showMenu()) message.setReplyMarkup(menuKeyboard.build());
+        try { execute(message); } catch (TelegramApiException e) { log.error("Error sending message to Telegram", e); }
     }
 }

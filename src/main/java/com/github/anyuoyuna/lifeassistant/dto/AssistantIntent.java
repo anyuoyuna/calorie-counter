@@ -6,6 +6,6 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AssistantIntent(
-        String primaryIntent, // "FOOD", "ACTIVITY", "QUESTION", "GREETING", "UNKNOWN", FINANCE
+        String primaryIntent, // "FINANCE_ADD", "FINANCE_QUERY", "GREETING", or "UNKNOWN"
         List<String> actions
 ) {}

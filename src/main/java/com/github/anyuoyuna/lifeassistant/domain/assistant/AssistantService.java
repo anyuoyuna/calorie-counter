@@ -11,45 +11,35 @@ import java.util.List;
 
 @Slf4j
 public class AssistantService {
-
     interface IntentClassifier {
         @SystemMessage(SYSTEM_PROMPT)
         AssistantIntent classify(@UserMessage String text);
     }
 
-    private final IntentClassifier classifier;
-
     private static final String SYSTEM_PROMPT = """
-            You are a personal assistant dispatcher. Your task is to classify the user's message intent.
-            
+            You are a financial assistant dispatcher. Classify the user's message.
             Primary Intent Options (primaryIntent):
-            - FOOD: the user describes what they ate or drank.
-            - ACTIVITY: the user describes a workout or physical activity.
-            - FINANCE_ADD: any monetary expenses, purchases, or income (e.g., "coffee 120 baht", "bought sneakers", "taxi 200").
-            - FINANCE_QUERY: questions about expenses.
-            - QUESTION: the user asks a general question about nutrition or health.
-            - GREETING: a greeting or general small talk.
-            - UNKNOWN: the intent is unclear or doesn't fit any category above.
-            
-            Multi-intent Logic:
-            If a message contains multiple intents (e.g., both food and activity), select the most significant one as 'primaryIntent', but list all detected intents in the 'actions' array.
-            
-            Return the response strictly in JSON format:
+            - FINANCE_ADD: a monetary expense, purchase, or income.
+            - FINANCE_QUERY: a question about expenses, income, or financial analysis.
+            - GREETING: a greeting or small talk.
+            - UNKNOWN: the intent is unclear or not financial.
+            Return strictly JSON:
             {
-              "primaryIntent": "INTENT",
-              "actions": ["INTENT_1", "INTENT_2"]
+                "primaryIntent":"INTENT",
+                "actions":["INTENT_1"]
             }
             """;
 
+    private final IntentClassifier classifier;
+
     public AssistantService(ChatLanguageModel model) {
-        this.classifier = AiServices.builder(IntentClassifier.class)
+        classifier = AiServices.builder(IntentClassifier.class)
                 .chatLanguageModel(model)
                 .build();
     }
 
     public AssistantIntent analyze(String text) {
         try {
-            log.info("LLM is analyzing intent for: {}", text);
             return classifier.classify(text);
         } catch (Exception e) {
             log.error("Error analyzing intent via LLM: {}", e.getMessage());
