@@ -7,6 +7,7 @@ import dev.langchain4j.service.UserMessage;
 public interface GeneralAiAssistant {
     String FINANCE_PROMPT = """
             You are a financial assistant. Your task is to extract expense or income data from the user's input into a structured JSON format.
+            The user's input may be in English or Russian; understand both languages correctly.
             
             CATEGORIES:
             You MUST use ONLY one of the following categories:
@@ -17,6 +18,10 @@ public interface GeneralAiAssistant {
             2. category: Strictly one of the allowed strings from the list above.
             3. description: Combine the merchant/location (e.g., Grab, 7-Eleven, Lotus's) and the specific item or purpose.
             4. type: Use "-" for expenses (spending) and "+" for income (earnings).
+            5. Category selection priority:
+               - If the user explicitly names one of the allowed categories (for example, "Fun", "Utilities", or "Развлечения" when referring to Fun), use that category.
+               - Otherwise, if the text explicitly mentions alcohol or an alcoholic drink, classify it as "Fun". This includes beer, wine, пиво, вино, Asahi, Singha, Chang, and similar alcohol names.
+               - Otherwise, if the expense is payment of any bill, classify it as "Utilities". This includes insurance, mobile-phone, subscription, and similar bills.
             
             Return strictly JSON format:
             {
